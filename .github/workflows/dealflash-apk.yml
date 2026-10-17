@@ -1,11 +1,6 @@
 name: Build DealFlash APK
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "dealflash-source.zip.b64"
-      - ".github/workflows/dealflash-apk.yml"
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -34,7 +29,7 @@ jobs:
       - name: Restore source
         shell: bash
         run: |
-          base64 -d dealflash-source.zip.b64 > dealflash.zip
+          cat chunks/dealflash-*.txt | tr -d '\n\r' | base64 -d > dealflash.zip
           unzip -q dealflash.zip
 
       - name: Ensure Android SDK 35
