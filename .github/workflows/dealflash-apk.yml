@@ -6,6 +6,8 @@ on:
     paths:
       - "dealflash-source.zip.b64"
       - ".github/workflows/dealflash-apk.yml"
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
