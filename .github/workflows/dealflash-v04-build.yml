@@ -1,0 +1,50 @@
+name: Build DealFlash v0.4 APK
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ANDROID_HOME: /usr/local/lib/android/sdk
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Restore source
+        shell: bash
+        run: |
+          cat tmp-dealflash-v04/chunk-*.txt | tr -d '\n\r' | base64 -d > dealflash-v04.zip
+          mkdir buildsrc
+          cd buildsrc
+          unzip -q ../dealflash-v04.zip
+
+      - name: Build debug APK
+        working-directory: buildsrc
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DealFlash-v0.4-debug-apk
+          path: buildsrc/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
