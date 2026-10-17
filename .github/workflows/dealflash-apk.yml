@@ -32,6 +32,9 @@ jobs:
           cat chunks/dealflash-*.txt | tr -d '\n\r' | base64 -d > dealflash.zip
           unzip -q dealflash.zip
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Ensure Android SDK 35
         shell: bash
         run: |
