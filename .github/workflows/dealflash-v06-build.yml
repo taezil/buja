@@ -1,31 +1,36 @@
-name: DealFlash v0.6 APK
+name: Build DealFlash v0.6 APK
 on:
   push:
     branches: [dealflash-v06-build]
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  ANDROID_HOME: /usr/local/lib/android/sdk
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
-      - name: Restore source
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+      - name: Restore v0.6 source
         run: |
-          base64 -d repochunks/v06/chunk-00 > /tmp/v06.zip
-          rm -rf buildsrc && mkdir buildsrc
-          unzip -q /tmp/v06.zip -d buildsrc
-      - name: Install Android SDK packages
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null || true
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-      - name: Build
+          base64 -d dealflash-v06-source.zip.b64 > v06.zip
+          mkdir buildsrc
+          cd buildsrc
+          unzip -q ../v06.zip
+      - name: Build debug APK
         working-directory: buildsrc
-        run: |
-          gradle wrapper --gradle-version 8.9
-          ./gradlew :app:assembleDebug --stacktrace
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: DealFlash-v0.6-debug-apk
           path: buildsrc/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
