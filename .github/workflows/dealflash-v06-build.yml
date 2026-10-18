@@ -1,4 +1,4 @@
-name: Build DealFlash v0.8 APK
+name: Build DealFlash v0.9 APK
 on:
   push:
     branches: [dealflash-v06-build]
@@ -22,15 +22,15 @@ jobs:
           gradle-version: "8.10.2"
       - name: Restore v0.7 source
         run: |
-          cp dealflash-v08-source.zip v08.zip
+          cp dealflash-v09-source.zip v09.zip
           mkdir buildsrc
           cd buildsrc
-          unzip -q ../v08.zip
+          unzip -q ../v09.zip
       - name: Build debug APK
         working-directory: buildsrc
         run: gradle --no-daemon --stacktrace :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v0.8-debug-apk
+          name: DealFlash-v0.9-debug-apk
           path: buildsrc/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
