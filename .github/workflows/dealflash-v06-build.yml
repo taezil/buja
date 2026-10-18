@@ -38,8 +38,8 @@ jobs:
           open(p,'w').write(s.replace(marker,marker+'\\n        PageResult out = new PageResult();\\n'+inject,1).replace('\\n        PageResult out = new PageResult();\\n        PageResult out = new PageResult();','\\n        PageResult out = new PageResult();',1))
           p='app/src/main/java/com/dealflash/app/MonitorService.java'
           s=open(p).read()
-          old='HistoryStore.save(this,history);\\n            long now=System.currentTimeMillis();'
-          new='HistoryStore.save(this,history);\\n            if(p.ok) ServerSync.uploadDeals(p.items, feed.source);\\n            ServerSync.monitor(p.ok?200:(p.blocked?403:(p.timeout?408:500)), p.items==null?0:p.items.size(), (int)(hits-ScannerPrefs.hits(this)), System.currentTimeMillis()-roundStart, p.ok?null:state);\\n            long now=System.currentTimeMillis();'
+          old='HistoryStore.save(this,history);'
+          new='HistoryStore.save(this,history);\\n            if(p.ok) ServerSync.uploadDeals(p.items, feed.source);\\n            ServerSync.monitor(p.ok?200:(p.blocked?403:(p.timeout?408:500)), p.items==null?0:p.items.size(), (int)(hits-ScannerPrefs.hits(this)), System.currentTimeMillis()-roundStart, p.ok?null:state);'
           if old not in s: raise SystemExit('monitor patch target not found')
           open(p,'w').write(s.replace(old,new))
           PY
