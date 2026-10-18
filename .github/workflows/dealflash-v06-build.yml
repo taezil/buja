@@ -1,4 +1,4 @@
-name: Build DealFlash v1.4 APK
+name: Build DealFlash v1.5 APK
 on:
   push:
     branches: [dealflash-v06-build]
@@ -20,16 +20,45 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.10.2"
-      - name: Restore and patch v1.4 source
+      - name: Restore and patch v1.5 source
         run: |
           mkdir buildsrc
           cd buildsrc
           unzip -q ../dealflash-v12-source.zip
           cp ../v13-overlay/ServerSync.java app/src/main/java/com/dealflash/app/ServerSync.java
-          grep -RIl 'V1.2' app/src/main | xargs -r sed -i 's/V1\.2/V1.4/g'
-          grep -RIl 'v1.2' app/src/main | xargs -r sed -i 's/v1\.2/v1.4/g'
-          sed -i "s/versionCode 12/versionCode 14/; s/versionName '1.2.0'/versionName '1.3.0'/" app/build.gradle
+          grep -RIl 'V1.2' app/src/main | xargs -r sed -i 's/V1\.2/V1.5/g'
+          grep -RIl 'v1.2' app/src/main | xargs -r sed -i 's/v1\.2/v1.5/g'
+          sed -i "s/versionCode 12/versionCode 15/; s/versionName '1.2.0'/versionName '1.3.0'/" app/build.gradle
           python3 - <<'PY'
+          # Fallcent uses /product/... links, while the old browser DOM extractor only looked for
+          # Coupang /vp|np|vm/products links. Route Fallcent through the HTML parser instead.
+          p='app/src/main/java/com/dealflash/app/BrowserScanner.java'
+          s=open(p).read()
+          old='''    public synchronized PageResult scanListings(String url, String source, long timeoutMs) {
+        PageResult out = new PageResult();
+        if (webView == null) { out.error = "WebView 초기화 실패"; return out; }'''
+          new='''    public synchronized PageResult scanListings(String url, String source, long timeoutMs) {
+        PageResult out = new PageResult();
+        if ("FALLCENT".equals(source)) {
+            WebFetcher.Result r = WebFetcher.fetch(url);
+            out.finalUrl = r.finalUrl;
+            if (r.code >= 200 && r.code < 400 && r.body != null && !r.body.isEmpty()) {
+                out.items.addAll(PageScanner.scan(r.body, r.finalUrl, source));
+                out.productLinks = out.items.size();
+                out.ok = !out.items.isEmpty();
+                out.status = out.ok ? "정상 " + out.items.size() + "상품" : "폴센트 상품 파싱 0개";
+                if (!out.ok) out.error = out.status;
+            } else {
+                out.blocked = r.code == 403 || r.code == 429;
+                out.error = r.code > 0 ? "HTTP " + r.code : (r.error.isEmpty() ? "네트워크 오류" : r.error);
+                out.status = out.error;
+            }
+            return out;
+        }
+        if (webView == null) { out.error = "WebView 초기화 실패"; return out; }'''
+          if old not in s: raise SystemExit('BrowserScanner patch target not found')
+          open(p,'w').write(s.replace(old,new))
+          
           p='app/src/main/java/com/dealflash/app/MonitorService.java'
           s=open(p).read()
           old='HistoryStore.save(this,history);\n            long now=System.currentTimeMillis();'
@@ -42,6 +71,6 @@ jobs:
         run: gradle --no-daemon --stacktrace :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v1.4-debug-apk
+          name: DealFlash-v1.5-debug-apk
           path: buildsrc/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
