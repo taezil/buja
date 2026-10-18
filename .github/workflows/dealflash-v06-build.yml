@@ -22,7 +22,7 @@ jobs:
           gradle-version: "8.10.2"
       - name: Restore v0.7 source
         run: |
-          cat tmp-dealflash-v072/chunk-*.txt | tr -d '\n\r' | base64 -d > v072.zip
+          cp dealflash-v072-source.zip v072.zip
           mkdir buildsrc
           cd buildsrc
           unzip -q ../v072.zip
