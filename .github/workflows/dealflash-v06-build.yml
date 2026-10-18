@@ -20,12 +20,21 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.10.2"
-      - name: Restore v1.3 source
+      - name: Restore and patch v1.3 source
         run: |
-          base64 -d dealflash-v13-source.zip.b64 > v13.zip
           mkdir buildsrc
           cd buildsrc
-          unzip -q ../v13.zip
+          unzip -q ../dealflash-v12-source.zip
+          cp ../v13-overlay/ServerSync.java app/src/main/java/com/dealflash/app/ServerSync.java
+          sed -i "s/versionCode 12/versionCode 13/; s/versionName '1.2.0'/versionName '1.3.0'/" app/build.gradle
+          python3 - <<'PY'
+          p='app/src/main/java/com/dealflash/app/MonitorService.java'
+          s=open(p).read()
+          old='HistoryStore.save(this,history);\n            long now=System.currentTimeMillis();'
+          new='HistoryStore.save(this,history);\n            if(p.ok) ServerSync.uploadDeals(p.items, feed.source);\n            ServerSync.monitor(p.ok?200:(p.blocked?403:(p.timeout?408:500)), p.items==null?0:p.items.size(), (int)(hits-ScannerPrefs.hits(this)), System.currentTimeMillis()-roundStart, p.ok?null:state);\n            long now=System.currentTimeMillis();'
+          if old not in s: raise SystemExit('patch target not found')
+          open(p,'w').write(s.replace(old,new))
+          PY
       - name: Build debug APK
         working-directory: buildsrc
         run: gradle --no-daemon --stacktrace :app:assembleDebug
