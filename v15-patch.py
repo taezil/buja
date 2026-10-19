@@ -678,3 +678,48 @@ p.write_text(x)
 for z in ['equalsIgnoreCase("fcnt.link")','CATEGORY_BROWSABLE','BROWSER_FCNT']:
     if z not in x: raise SystemExit("V39_VERIFY_FAILED "+z)
 print("V39_FCNT_BROWSER_HANDOFF_OK")
+
+
+# v4.0 Fallcent CTA extraction: keep Fallcent internal, click/observe the real bottom "쿠팡 바로가기" target
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+a=x.index(' static void resolveFallcent(Context c,String u){')
+b=x.index(' static void openCoupang(',a)
+r=x[a:b]
+# V3.9's direct external fcnt handoff was diagnostic only; remove both external handoffs.
+entry='''  try{
+    android.net.Uri input=android.net.Uri.parse(u);
+    String ih=input.getHost();
+    if(ih!=null&&ih.equalsIgnoreCase("fcnt.link")){
+      android.content.Intent out=new android.content.Intent(android.content.Intent.ACTION_VIEW,input);
+      out.addCategory(android.content.Intent.CATEGORY_BROWSABLE);
+      c.startActivity(out);
+      return;
+    }
+  }catch(Exception e){Toast.makeText(c,"링크를 열 수 없습니다",Toast.LENGTH_SHORT).show();return;}
+'''
+if entry in r:r=r.replace(entry,'',1)
+handoff='''try{String bh=android.net.Uri.parse(q).getHost();if(bh!=null&&bh.equalsIgnoreCase("fcnt.link")){done[0]=true;log("BROWSER_FCNT "+q);try{w.stopLoading();}catch(Exception ignored){}try{root.removeView(w);}catch(Exception ignored){}try{w.destroy();}catch(Exception ignored){}android.content.Intent out=new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(q));out.addCategory(android.content.Intent.CATEGORY_BROWSABLE);c.startActivity(out);return;}}catch(Exception ignored){}'''
+if handoff in r:r=r.replace(handoff,'',1)
+
+# Do not recursively HTTP-fetch fcnt: let the attached browser WebView navigate it only when the real CTA click emits it.
+old='''if(bridge(q)){final String first=q;new Thread(()->{String cur=first;try{for(int hop=0;hop<8&&!done[0];hop++){java.net.HttpURLConnection cn=(java.net.HttpURLConnection)new java.net.URL(cur).openConnection();cn.setInstanceFollowRedirects(false);cn.setConnectTimeout(5000);cn.setReadTimeout(5000);cn.setRequestProperty("User-Agent",w.getSettings().getUserAgentString());cn.setRequestProperty("Referer","https://fallcent.com/");String ck=android.webkit.CookieManager.getInstance().getCookie(cur);if(ck!=null)cn.setRequestProperty("Cookie",ck);int code=cn.getResponseCode();String loc=cn.getHeaderField("Location");log("HTTP "+code+" "+cur+" -> "+loc);cn.disconnect();if(loc==null||loc.isEmpty())break;cur=new java.net.URL(new java.net.URL(cur),loc).toString();final String got=cur;a.runOnUiThread(()->finish(got));if(coup(cur))break;}}catch(Exception e){log("HTTP_ERR "+e.getClass().getSimpleName());}a.runOnUiThread(()->{if(!done[0])w.loadUrl(first);});}).start();}'''
+new='''if(bridge(q)){log("BRIDGE "+q);if(android.os.Looper.myLooper()==android.os.Looper.getMainLooper())w.loadUrl(q);else a.runOnUiThread(()->w.loadUrl(q));}'''
+if old not in r: raise SystemExit("V40_BRIDGE_TARGET_MISSING")
+r=r.replace(old,new,1)
+
+# Poll the actual visible CTA by text. href is returned if present; otherwise click it in-page so navigation interception sees its generated URL.
+oldjs='''var b=[].slice.call(document.querySelectorAll('a,button,[role=button]')).find(function(e){return /쿠팡\\\\s*바로가기|쿠팡.*구매|구매하러/.test(e.innerText||'');});if(b)b.click();return '';'''
+newjs='''var b=[].slice.call(document.querySelectorAll('a,button,[role=button]')).find(function(e){return /쿠팡\\\\s*바로가기/.test((e.innerText||'').replace(/\\\\s+/g,' '));});if(b){var h=b.href||b.getAttribute('href')||b.getAttribute('data-href')||b.getAttribute('data-url')||'';if(h)return h;b.click();}return '';'''
+if oldjs not in r: raise SystemExit("V40_CTA_TARGET_MISSING")
+r=r.replace(oldjs,newjs,1)
+
+# Avoid external Fallcent exposure on timeout; concise diagnostic remains.
+r=r.replace('new android.app.AlertDialog.Builder(a).setTitle("쿠팡 링크 추적 실패").setMessage(trace.toString()).setPositiveButton("확인",null).show();',
+'''new android.app.AlertDialog.Builder(a).setTitle("쿠팡 링크 추출 실패").setMessage("폴센트의 쿠팡 바로가기 주소를 가져오지 못했습니다.").setPositiveButton("확인",null).show();''',1)
+
+x=x[:a]+r+x[b:]
+p.write_text(x)
+for z in ['BRIDGE "+q','쿠팡\\\\\\\\s*바로가기','폴센트의 쿠팡 바로가기 주소']:
+    if z not in x: raise SystemExit("V40_VERIFY_FAILED "+z)
+print("V40_FALLCENT_CTA_EXTRACTION_OK")
