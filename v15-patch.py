@@ -222,3 +222,42 @@ x=x.replace(old,'java.util.HashSet<String> seen=new java.util.HashSet<>();for(Ho
 p.write_text(x)
 if 'seen.add(du)' not in x or 'url.equals(h.url)' not in x: raise SystemExit('V26_DEDUPE_VERIFY_FAILED')
 print('V26_DEDUPE_OK')
+
+
+# v2.7 detail image + readable price history + fire buy signal + stronger semantic dedupe
+p=Path("app/src/main/java/com/dealflash/app/MainActivity.java")
+x=p.read_text()
+# fire signal helper
+anchor=' void showHotDetail(String key){'
+if anchor not in x: raise SystemExit("V27_DETAIL_TARGET_MISSING")
+helper=''' String fire(int pct){if(pct>=65)return "🔥🔥🔥🔥🔥  필수! 꼭 사야함";if(pct>=55)return "🔥🔥🔥🔥  꼭 사야함";if(pct>=45)return "🔥🔥🔥  사보자";if(pct>=30)return "🔥🔥  살까?";return "🔥  고민";}'''
+x=x.replace(anchor,helper+anchor,1)
+# add fire label to hot card
+old='info.addView(badges);TextView nm=t(cleanTitle(d.title),15,true);'
+if old not in x: raise SystemExit("V27_CARD_TARGET_MISSING")
+x=x.replace(old,'info.addView(badges);TextView buy=t(fire(d.dropPct),12,true);buy.setTextColor(RED);info.addView(buy);TextView nm=t(cleanTitle(d.title),15,true);',1)
+# replace hot detail with image and clearer history visualization
+a=x.index(' void showHotDetail(String key){')
+b=x.index(' void keywordDialog()',a)
+detail=''' void showHotDetail(String key){HotDealStore.Hot d=null;for(HotDealStore.Hot z:HotDealStore.all(this))if(z.key.equals(key)){d=z;break;}if(d==null){showHot();return;}content.removeAllViews();Button back=ghost("← 급락 목록");back.setOnClickListener(v->showHot());content.addView(back);String iu=d.imageUrl;if(iu==null||iu.isEmpty()){HistoryStore.H hi=HistoryStore.load(this).get(d.key);if(hi!=null)iu=hi.imageUrl;}if(iu!=null&&!iu.isEmpty()){ImageView im=new ImageView(this);im.setScaleType(ImageView.ScaleType.CENTER_CROP);content.addView(im,new LinearLayout.LayoutParams(-1,dp(210)));loadImage(im,iu);}content.addView(t(cleanTitle(d.title),22,true));TextView buy=t(fire(d.dropPct),17,true);buy.setTextColor(RED);content.addView(buy);TextView p=t(money(d.current)+"   ▼ "+d.dropPct+"%",28,true);p.setTextColor(RED);content.addView(p);TextView old=t("기준가 "+money(d.reference)+"   →   현재 "+money(d.current),14,false);old.setTextColor(MUTED);content.addView(old);LinearLayout verify=card();verify.addView(t("✓ 상세페이지 재검증 완료",16,true));verify.addView(t("발견 "+date(d.foundAt)+"\n마지막 검증 "+date(d.lastVerifiedAt),13,false));content.addView(verify);content.addView(t("과거 최저가 / 가격 흐름",20,true));LinearLayout graph=card();TextView hi=t("기준가  "+money(d.reference),14,true);graph.addView(hi);android.widget.ProgressBar bar=new android.widget.ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);bar.setMax(100);bar.setProgress(Math.max(1,Math.min(100,(int)Math.round(d.current*100.0/Math.max(1,d.reference)))));graph.addView(bar,new LinearLayout.LayoutParams(-1,dp(18)));TextView now=t("현재  "+money(d.current)+"   ·   "+d.dropPct+"% 하락",20,true);now.setTextColor(RED);graph.addView(now);graph.addView(t("저장된 실제 관측 가격을 기준으로 계속 누적돼.",12,false));content.addView(graph);Button open=primary("쿠팡에서 상품 보기");final HotDealStore.Hot fd=d;open.setOnClickListener(v->{HistoryStore.H hh=HistoryStore.load(this).get(fd.key);AppLauncher.openProduct(this,"FALLCENT",hh!=null?hh.url:fd.url);});content.addView(open,new LinearLayout.LayoutParams(-1,dp(56)));}
+'''
+x=x[:a]+detail+x[b:]
+p.write_text(x)
+
+# semantic dedupe: normalize title+price so alternate Fallcent URLs for same item collapse
+p=Path("app/src/main/java/com/dealflash/app/HotDealStore.java")
+h=p.read_text()
+old='for(Hot h:a)if(h.key.equals(key)||(url!=null&&!url.isEmpty()&&url.equals(h.url))){found=h;break;}'
+if old not in h: raise SystemExit("V27_DEDUPE_TARGET_MISSING")
+new='String nt=title==null?"":title.replaceAll("[^가-힣A-Za-z0-9]","").toLowerCase();for(Hot h:a){String ht=h.title==null?"":h.title.replaceAll("[^가-힣A-Za-z0-9]","").toLowerCase();if(h.key.equals(key)||(url!=null&&!url.isEmpty()&&url.equals(h.url))||(!nt.isEmpty()&&nt.equals(ht)&&Math.abs(h.current-current)<1)){found=h;break;}}'
+h=h.replace(old,new,1)
+p.write_text(h)
+
+for fn,needle in [
+("app/src/main/java/com/dealflash/app/MainActivity.java","필수! 꼭 사야함"),
+("app/src/main/java/com/dealflash/app/MainActivity.java","과거 최저가 / 가격 흐름"),
+("app/src/main/java/com/dealflash/app/MainActivity.java","dp(210)"),
+("app/src/main/java/com/dealflash/app/HotDealStore.java","nt.equals(ht)")
+]:
+    if needle not in Path(fn).read_text(): raise SystemExit("V27_VERIFY_FAILED "+fn)
+print("V27_DETAIL_GRAPH_FIRE_DEDUPE_OK")
