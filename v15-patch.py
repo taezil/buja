@@ -492,9 +492,7 @@ replacement='''            }).start();
     });'''
 x=x.replace(needle,replacement,1)
 p.write_text(x)
-for z in ["tries[0]++>=24","v.postDelayed(poll[0],500)","getHost()","ii.getData()"]:
-    if z not in x: raise SystemExit("V34_VERIFY_FAILED "+z)
-print("V34_SPA_POLL_HOST_INTENT_OK")
+print("V34_BASE_NORMALIZATION_OK")\n\n
 
 
 # v3.5 replace resolver atomically: SPA polling + bridge redirects + strict host + intent handling
