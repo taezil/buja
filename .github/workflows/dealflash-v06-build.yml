@@ -1,4 +1,4 @@
-name: Build DealFlash v2.1 APK
+name: Build DealFlash v2.2 APK
 on:
   push:
     branches: [dealflash-v06-build]
@@ -20,7 +20,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.10.2"
-      - name: Restore and patch v2.1 source
+      - name: Restore and patch v2.2 source
         run: |
           mkdir buildsrc
           cd buildsrc
@@ -45,14 +45,14 @@ jobs:
           for x in ok[:3]: print('SAMPLE',x)
           print('NOTE server-side curl may be blocked; Android uses WebView DOM parser')
           PY
-          grep -RIl 'V1.2' app/src/main | xargs -r sed -i 's/V1\.2/V2.1/g'
-          grep -RIl 'v1.2' app/src/main | xargs -r sed -i 's/v1\.2/v2.1/g'
-          sed -i "s/versionCode 12/versionCode 21/; s/versionName '1.2.0'/versionName '2.1.0'/" app/build.gradle
+          grep -RIl 'V1.2' app/src/main | xargs -r sed -i 's/V1\.2/V2.2/g'
+          grep -RIl 'v1.2' app/src/main | xargs -r sed -i 's/v1\.2/v2.2/g'
+          sed -i "s/versionCode 12/versionCode 22/; s/versionName '1.2.0'/versionName '2.2.0'/" app/build.gradle
       - name: Build debug APK
         working-directory: buildsrc
         run: gradle --no-daemon --stacktrace :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.1-debug-apk
+          name: DealFlash-v2.2-debug-apk
           path: buildsrc/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
