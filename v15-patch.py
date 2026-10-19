@@ -366,3 +366,19 @@ if old2 in x: x=x.replace(old2,"",1)
 p.write_text(x)
 if "a.closest('article,li,[class*=product],[class*=item],[class*=card]')" not in x: raise SystemExit("V30_CARD_BIND_VERIFY_FAILED")
 print("V30_SAME_CARD_PRODUCT_BINDING_OK")
+
+
+# v3.1 actual Fallcent redirect chain observed: fcnt.link -> api.adjoin.co.kr/cou/land.php?land=https://link.coupang.com/re/AFFSDP...
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+x=x.replace('if(z.contains("api.ootoo.co.kr")){','if(z.contains("api.ootoo.co.kr")||z.contains("api.adjoin.co.kr")){')
+x=x.replace("h.indexOf('api.ootoo.co.kr/cou/land.php')>=0||h.indexOf('link.coupang.com')>=0","h.indexOf('api.ootoo.co.kr/cou/land.php')>=0||h.indexOf('api.adjoin.co.kr/cou/land.php')>=0||h.indexOf('fcnt.link/')>=0||h.indexOf('link.coupang.com')>=0")
+# Treat fcnt/adjoin as redirect candidates: navigate hidden WebView through them, but only open externally once Coupang is reached.
+x=x.replace('boolean coup(String z){return z!=null&&(z.contains("link.coupang.com")||z.contains("coupang.com")||z.startsWith("coupang://"));}',
+'''boolean coup(String z){return z!=null&&(z.contains("link.coupang.com")||z.contains("coupang.com")||z.startsWith("coupang://"));}
+      boolean bridge(String z){return z!=null&&(z.contains("fcnt.link/")||z.contains("api.adjoin.co.kr/cou/land.php")||z.contains("api.ootoo.co.kr/cou/land.php"));}''')
+# JS callback: if it found fcnt.link, load it so redirects are observable.
+x=x.replace('r.go(dest);\n        });','r.go(dest);if(!done[0]&&r.bridge(dest))v.loadUrl(dest);\n        });')
+p.write_text(x)
+if "api.adjoin.co.kr" not in x or "fcnt.link/" not in x or "v.loadUrl(dest)" not in x: raise SystemExit("V31_REDIRECT_CHAIN_VERIFY_FAILED")
+print("V31_FCNT_ADJOIN_COUPANG_CHAIN_OK")
