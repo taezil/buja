@@ -1,4 +1,4 @@
-name: Build DealFlash v1.5 APK
+name: Build DealFlash v1.6 APK
 on:
   push:
     branches: [dealflash-v06-build]
@@ -20,25 +20,39 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.10.2"
-      - name: Restore and patch v1.5 source
+      - name: Restore and patch v1.6 source
         run: |
           mkdir buildsrc
           cd buildsrc
           unzip -q ../dealflash-v12-source.zip
           cp ../v13-overlay/ServerSync.java app/src/main/java/com/dealflash/app/ServerSync.java
           python3 ../v15-patch.py
-          echo '=== PageScanner.java ==='
-          cat app/src/main/java/com/dealflash/app/PageScanner.java
-          echo '=== BrowserScanner patched excerpt ==='
-          sed -n '1,230p' app/src/main/java/com/dealflash/app/BrowserScanner.java
-          grep -RIl 'V1.2' app/src/main | xargs -r sed -i 's/V1\.2/V1.5/g'
-          grep -RIl 'v1.2' app/src/main | xargs -r sed -i 's/v1\.2/v1.5/g'
-          sed -i "s/versionCode 12/versionCode 15/; s/versionName '1.2.0'/versionName '1.5.0'/" app/build.gradle
+          echo '=== Live Fallcent parser smoke test ==='
+          curl -fsSL --max-time 15 'https://fallcent.com/product/recommend/?from=gnb' -o /tmp/fallcent.html
+          python3 - <<'PY'
+          import re
+          h=open('/tmp/fallcent.html',encoding='utf-8').read()
+          anchors=re.findall(r'''(?is)<a[^>]+href=["']([^"']*/product/[^"']+)["'][^>]*>(.*?)</a>''',h)
+          ok=[]
+          for href,b in anchors:
+              t=re.sub(r'<[^>]+>',' ',b)
+              t=re.sub(r'\s+',' ',t)
+              if not any(x in t for x in ('로켓배송','로켓직구','판매자로켓')) or '판매자배송' in t: continue
+              pm=re.search(r'(?:▼|↓)\s*([0-9]{1,2})\s*%',t)
+              wm=re.search(r'([0-9][0-9,]{2,})\s*원',t)
+              if pm and wm: ok.append((href,wm.group(1),pm.group(1),t[:100]))
+          print('FALLCENT_ANCHORS',len(anchors),'APP_COMPATIBLE_PRODUCTS',len(ok))
+          for x in ok[:3]: print('SAMPLE',x)
+          if not ok: raise SystemExit('live Fallcent parser smoke test failed')
+          PY
+          grep -RIl 'V1.2' app/src/main | xargs -r sed -i 's/V1\.2/V1.6/g'
+          grep -RIl 'v1.2' app/src/main | xargs -r sed -i 's/v1\.2/v1.6/g'
+          sed -i "s/versionCode 12/versionCode 16/; s/versionName '1.2.0'/versionName '1.6.0'/" app/build.gradle
       - name: Build debug APK
         working-directory: buildsrc
         run: gradle --no-daemon --stacktrace :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v1.5-debug-apk
+          name: DealFlash-v1.6-debug-apk
           path: buildsrc/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
