@@ -904,32 +904,14 @@ if "CTA_DIRECT " not in x: raise SystemExit("V47_VERIFY_FAILED")
 print("V47_CTA_CALLBACK_REPLACED_OK")
 
 
-# v4.8: fix the actual bug seen on #131: evaluateJavascript returns a JSON-quoted string.
-# The old callback forwarded that quoted value, so follow() never saw z.startsWith("OPEN:").
-# Decode the callback result before calling follow().
+
+# v4.8: generated callback returns JSON quoted strings; decode centrally at follow() entry.
 p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
 x=p.read_text()
-# Target the real CTA polling callback by locating the OPEN marker JS and the nearest callback.
-mark="""return 'OPEN:'+h;"""
-mi=x.find(mark)
-if mi<0: raise SystemExit("V48_OPEN_JS_MISSING")
-ev=x.rfind("evaluateJavascript(",0,mi)
-if ev<0: raise SystemExit("V48_EVAL_START_MISSING")
-end=x.find("});",mi)
-if end<0: raise SystemExit("V48_EVAL_END_MISSING")
-seg=x[ev:end+3]
-# Replace any direct r.follow(result-variable) callback handling with JSON decoding.
-m=re.search(r'([A-Za-z_][A-Za-z0-9_]*)\s*->\s*\{([^{}]|\{[^{}]*\})*?\}',seg)
-if not m: raise SystemExit("V48_CALLBACK_MISSING")
-param=m.group(1)
-body=m.group(0)
-# Preserve retry scheduling by only replacing follow invocation if present.
-fm=re.search(r'r\.follow\(\s*'+re.escape(param)+r'\s*\)',body)
-if not fm: raise SystemExit("V48_CALLBACK_FOLLOW_MISSING")
-decoded='''String zz='''+param+''';try{if(zz!=null&&zz.length()>1&&zz.charAt(0)=='"')zz=new org.json.JSONTokener(zz).nextValue().toString();}catch(Exception ignore){}r.follow(zz)'''
-body2=body[:fm.start()]+decoded+body[fm.end():]
-seg2=seg[:m.start()]+body2+seg[m.end():]
-x=x[:ev]+seg2+x[end+3:]
+needle='''void follow(String z){if(done[0]||z==null||z.isEmpty())return;'''
+if needle not in x: raise SystemExit("V48_FOLLOW_ENTRY_MISSING")
+repl='''void follow(String z){if(z!=null&&z.length()>1&&z.charAt(0)=='"'){try{Object jv=new org.json.JSONTokener(z).nextValue();if(jv!=null)z=jv.toString();}catch(Exception ignore){}}if(done[0]||z==null||z.isEmpty())return;'''
+x=x.replace(needle,repl,1)
 p.write_text(x)
-if "JSONTokener" not in x: raise SystemExit("V48_VERIFY_FAILED")
+if "new org.json.JSONTokener(z)" not in x: raise SystemExit("V48_VERIFY_FAILED")
 print("V48_JSON_CALLBACK_DECODE_OK")
