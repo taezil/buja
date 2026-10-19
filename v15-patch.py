@@ -807,3 +807,27 @@ x=x[:m.end()]+body+x[m.end():]
 p.write_text(x)
 if 'ih.equals("fcnt.link")' not in x: raise SystemExit("V43_VERIFY_FAILED")
 print("V43_FCNT_SYSTEM_BROWSER_HANDOFF_OK")
+
+
+# v4.4: diagnostics proved Fallcent detail DOM exposes the real CTA as an <a href="https://fcnt.link/...">.
+# The previous poll found it but fed it back into the blocked embedded resolver. Instead, when the
+# CTA href is discovered, launch that exact href in the system browser immediately.
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+# Replace bridge handling in follow(): fcnt discovered from Fallcent CTA must leave embedded WebView.
+# Use the stable BRIDGE trace statement as anchor.
+m=re.search(r'if\s*\(\s*bridge\(q\)\s*\)\s*\{([^{}]|\{[^{}]*\})*?\}',x)
+if m:
+    block=m.group(0)
+    if 'loadUrl(q)' in block:
+        nb=block.replace('w.loadUrl(q);','try{ a.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(q))); done=true; clean(); }catch(Exception e){ log("BROWSER_ERR "+e.getClass().getSimpleName()); }')
+        x=x[:m.start()]+nb+x[m.end():]
+else:
+    # Stable direct replacement for compact generated source.
+    old='''if(bridge(q)){log("BRIDGE "+q);w.loadUrl(q);return;}'''
+    if old not in x: raise SystemExit("V44_BRIDGE_BLOCK_MISSING")
+    new='''if(bridge(q)){log("BRIDGE "+q);try{a.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(q)));done=true;clean();}catch(Exception e){log("BROWSER_ERR "+e.getClass().getSimpleName());}return;}'''
+    x=x.replace(old,new,1)
+p.write_text(x)
+if 'ACTION_VIEW,android.net.Uri.parse(q)' not in x: raise SystemExit("V44_VERIFY_FAILED")
+print("V44_CTA_FCNT_BROWSER_ROUTE_OK")
