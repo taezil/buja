@@ -1361,3 +1361,13 @@ p.write_text(x)
 for fn,needle in [("ProductUX.java","가전/디지털"),("PriceHistoryView.java","관측 "),("ServerSync.java","/api/history/"),("MainActivity.java","categoryNamesV6"),("MainActivity.java","ServerSync.fetchHistory"),("MainActivity.java","ProductUX.clean")]:
  if needle not in (base/fn).read_text(): raise SystemExit("V60_VERIFY "+fn)
 print("V60_PREMIUM_UX_CATEGORY_HISTORY_INTELLIGENCE_OK")
+
+
+# v6.0b restore fire helper after detail layout replacement.
+p=Path("app/src/main/java/com/dealflash/app/MainActivity.java");x=p.read_text()
+if 'String fire(int pct)' not in x:
+ pos=x.find(' void showHotDetail(')
+ x=x[:pos]+''' String fire(int pct){if(pct>=65)return "🔥🔥🔥🔥🔥  필수! 꼭 사야함";if(pct>=55)return "🔥🔥🔥🔥  꼭 사야함";if(pct>=45)return "🔥🔥🔥  사보자";if(pct>=30)return "🔥🔥  살까?";return "🔥  고민";}'''+x[pos:]
+p.write_text(x)
+if 'String fire(int pct)' not in x: raise SystemExit("V60B_FIRE_FAILED")
+print("V60B_FIRE_OK")
