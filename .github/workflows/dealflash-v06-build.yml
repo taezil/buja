@@ -40,6 +40,9 @@ jobs:
           cat app/src/main/java/com/dealflash/app/OpenProductActivity.java || true
           echo "=== MONITOR HOT PUT / PARSE ==="
           grep -R -n -C 5 "HotDealStore.put\\|imageUrl\\|new DealItem" app/src/main/java/com/dealflash/app | head -320 || true
+          echo "=== NOTIFICATION CODE ==="
+          cat app/src/main/java/com/dealflash/app/NotificationHelper.java || true
+          grep -R -n -C 4 "alertAuto" app/src/main/java/com/dealflash/app/MonitorService.java || true
           echo '=== Live Fallcent parser smoke test ==='
           curl -sSL --max-time 15 'https://fallcent.com/product/recommend/?from=gnb' -o /tmp/fallcent.html || true
           python3 - <<'PY'
