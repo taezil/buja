@@ -21,7 +21,7 @@ public final class ServerSync {
                 o.put("product_key",ProductUrl.key(source,u));o.put("product_name",x.title==null?"상품":x.title);
                 o.put("product_url",u);o.put("coupang_url",u);o.put("image_url",x.imageUrl==null?"":x.imageUrl);
                 o.put("shipping_type",x.rocket?"ROCKET":"UNKNOWN");o.put("category",source);
-                o.put("current_price",Math.round(x.price));o.put("drop_rate",x.declaredDiscountPct);
+                o.put("price",Math.round(x.price));o.put("drop_rate",x.declaredDiscountPct);
                 o.put("deal_score",Math.min(100,(int)Math.round(x.declaredDiscountPct*0.70)));
                 o.put("is_price_error_candidate",x.declaredDiscountPct>=70?1:0);a.put(o);
             }
