@@ -1,0 +1,90 @@
+name: Build DealFlash v2.2 APK
+on:
+  push:
+    branches: [dealflash-v06-build]
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  ANDROID_HOME: /usr/local/lib/android/sdk
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+      - name: Restore and patch v2.2 source
+        run: |
+          mkdir buildsrc
+          cd buildsrc
+          unzip -q ../dealflash-v12-source.zip
+          cp ../v13-overlay/ServerSync.java app/src/main/java/com/dealflash/app/ServerSync.java
+          python3 ../v15-patch.py
+          echo "=== PATCHED MainActivity image references ==="
+          grep -n -C 4 "h.image\|image" app/src/main/java/com/dealflash/app/MainActivity.java | head -120 || true
+          echo "=== PATCHED OpenProductActivity URL handling ==="
+          grep -n -C 5 "ACTION_VIEW\|fallcent\|coupang" app/src/main/java/com/dealflash/app/OpenProductActivity.java | head -180 || true
+          echo "=== PATCHED BrowserScanner image/url ==="
+          grep -n -C 3 "data-lazy-src\|out.push\|sourceUrl\|productUrl" app/src/main/java/com/dealflash/app/BrowserScanner.java | head -180 || true
+          echo "=== DATA MODEL / LAUNCHER / DETAIL ==="
+          cat app/src/main/java/com/dealflash/app/HistoryStore.java || true
+          cat app/src/main/java/com/dealflash/app/HotDealStore.java || true
+          cat app/src/main/java/com/dealflash/app/AppLauncher.java || true
+          cat app/src/main/java/com/dealflash/app/OpenProductActivity.java || true
+          echo "=== MONITOR HOT PUT / PARSE ==="
+          grep -R -n -C 5 "HotDealStore.put\\|imageUrl\\|new DealItem" app/src/main/java/com/dealflash/app | head -320 || true
+          echo "=== NOTIFICATION CODE ==="
+          cat app/src/main/java/com/dealflash/app/NotificationHelper.java || true
+          grep -R -n -C 4 "alertAuto" app/src/main/java/com/dealflash/app/MonitorService.java || true
+          echo '=== Live Fallcent parser smoke test ==='
+          curl -sSL --max-time 15 'https://fallcent.com/product/recommend/?from=gnb' -o /tmp/fallcent.html || true
+          python3 - <<'PY'
+          import re
+          h=open('/tmp/fallcent.html',encoding='utf-8').read()
+          anchors=re.findall(r'''(?is)<a[^>]+href=["']([^"']*/product/[^"']+)["'][^>]*>(.*?)</a>''',h)
+          ok=[]
+          for href,b in anchors:
+              t=re.sub(r'<[^>]+>',' ',b)
+              t=re.sub(r'\s+',' ',t)
+              if not any(x in t for x in ('로켓배송','로켓직구','판매자로켓')) or '판매자배송' in t: continue
+              pm=re.search(r'(?:▼|↓)\s*([0-9]{1,2})\s*%',t)
+              wm=re.search(r'([0-9][0-9,]{2,})\s*원',t)
+              if pm and wm: ok.append((href,wm.group(1),pm.group(1),t[:100]))
+          print('FALLCENT_ANCHORS',len(anchors),'APP_COMPATIBLE_PRODUCTS',len(ok))
+          for x in ok[:3]: print('SAMPLE',x)
+          print('NOTE server-side curl may be blocked; Android uses WebView DOM parser')
+          PY
+          grep -RIl 'V1.2' app/src/main | xargs -r sed -i 's/V1\.2/V2.2/g'
+          grep -RIl 'v1.2' app/src/main | xargs -r sed -i 's/v1\.2/v2.2/g'
+          sed -i "s/versionCode 12/versionCode 22/; s/versionName '1.2.0'/versionName '2.2.0'/" app/build.gradle
+      - name: Build debug APK
+        working-directory: buildsrc
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+      - name: Stage debug APK
+        run: |
+          test -f buildsrc/app/build/outputs/apk/debug/app-debug.apk
+          cp buildsrc/app/build/outputs/apk/debug/app-debug.apk DealFlash-v2.2-debug.apk
+          ls -lh DealFlash-v2.2-debug.apk
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DealFlash-v2.2-debug-apk
+          path: DealFlash-v2.2-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+      - name: Package latest source
+        run: |
+          cd buildsrc
+          zip -qr ../DealFlash-source-latest.zip . -x "app/build/*" ".gradle/*" "build/*"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DealFlash-source-latest
+          path: DealFlash-source-latest.zip
+          if-no-files-found: error
