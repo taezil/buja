@@ -281,3 +281,72 @@ x=x.replace(old,'c.getSystemService(NotificationManager.class).notify(Math.abs((
 p.write_text(x)
 if 'dealflash_alert_dedupe_v2' not in x: raise SystemExit("V28_NOTIFY_VERIFY_FAILED")
 print("V28_NOTIFICATION_DEDUPE_OK")
+
+
+# v2.9 Fallcent resolver: extract the actual 쿠팡 바로가기 href (api.ootoo.co.kr -> link.coupang.com)
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+start=x.index(' static void resolveFallcent(Context c,String u){')
+end=x.index(' static void openCoupang(',start)
+resolver=r''' static void resolveFallcent(Context c,String u){
+  if(!(c instanceof android.app.Activity)){Toast.makeText(c,"쿠팡 링크 확인 실패",Toast.LENGTH_SHORT).show();return;}
+  android.app.Activity a=(android.app.Activity)c;
+  a.runOnUiThread(()->{
+    Toast.makeText(c,"쿠팡 상품으로 연결 중…",Toast.LENGTH_SHORT).show();
+    final android.webkit.WebView w=new android.webkit.WebView(c);
+    w.getSettings().setJavaScriptEnabled(true);w.getSettings().setDomStorageEnabled(true);
+    final boolean[] done={false};
+    class R {
+      String unwrap(String z){
+        if(z==null)return null;
+        try{
+          android.net.Uri q=android.net.Uri.parse(z);
+          if(z.contains("api.ootoo.co.kr")){
+            String land=q.getQueryParameter("land");
+            if(land!=null&&!land.isEmpty())return land;
+          }
+          if(z.startsWith("intent://")){
+            try{android.content.Intent ii=android.content.Intent.parseUri(z,android.content.Intent.URI_INTENT_SCHEME);String fb=ii.getStringExtra("browser_fallback_url");if(fb!=null)return fb;}catch(Exception ignored){}
+          }
+        }catch(Exception ignored){}
+        return z;
+      }
+      boolean coup(String z){return z!=null&&(z.contains("link.coupang.com")||z.contains("coupang.com")||z.startsWith("coupang://"));}
+      void go(String z){
+        if(done[0]||z==null||z.isEmpty())return;
+        String q=unwrap(z);
+        if(coup(q)){done[0]=true;try{w.stopLoading();}catch(Exception ignored){}openCoupang(c,q);try{w.destroy();}catch(Exception ignored){}}
+      }
+    }
+    final R r=new R();
+    w.setWebChromeClient(new android.webkit.WebChromeClient(){
+      @Override public boolean onCreateWindow(android.webkit.WebView v,boolean dialog,boolean gesture,android.os.Message msg){
+        android.webkit.WebView child=new android.webkit.WebView(c);child.getSettings().setJavaScriptEnabled(true);
+        child.setWebViewClient(new android.webkit.WebViewClient(){
+          @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView vv,String z){r.go(z);return r.coup(r.unwrap(z));}
+          @Override public void onPageStarted(android.webkit.WebView vv,String z,android.graphics.Bitmap b){r.go(z);}
+        });
+        ((android.webkit.WebView.WebViewTransport)msg.obj).setWebView(child);msg.sendToTarget();return true;
+      }
+    });
+    w.setWebViewClient(new android.webkit.WebViewClient(){
+      @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView v,String z){r.go(z);return r.coup(r.unwrap(z));}
+      @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView v,android.webkit.WebResourceRequest req){String z=req.getUrl().toString();r.go(z);return r.coup(r.unwrap(z));}
+      @Override public void onPageStarted(android.webkit.WebView v,String z,android.graphics.Bitmap b){r.go(z);}
+      @Override public void doUpdateVisitedHistory(android.webkit.WebView v,String z,boolean reload){r.go(z);}
+      @Override public void onPageFinished(android.webkit.WebView v,String z){
+        r.go(z);if(done[0])return;
+        v.evaluateJavascript("(function(){var aa=[].slice.call(document.querySelectorAll('a[href]'));var a=aa.find(function(e){var h=e.href||'';var t=(e.innerText||'').replace(/\\s+/g,' ');return /쿠팡\\s*바로가기|쿠팡.*구매|구매하러/.test(t)||h.indexOf('api.ootoo.co.kr/cou/land.php')>=0||h.indexOf('link.coupang.com')>=0;});return a?a.href:'';})()",q->{
+          if(q==null)return;String z=q.replace("\\u0026","&").replace("\\u003D","=");if(z.length()>1&&z.charAt(0)==34&&z.charAt(z.length()-1)==34)z=z.substring(1,z.length()-1);r.go(z);
+        });
+      }
+    });
+    w.loadUrl(u);
+    new Handler(Looper.getMainLooper()).postDelayed(()->{if(!done[0]){done[0]=true;try{w.destroy();}catch(Exception ignored){}Toast.makeText(c,"쿠팡 바로가기 주소를 찾지 못했어.",Toast.LENGTH_LONG).show();}},12000);
+  });
+ }
+'''
+x=x[:start]+resolver+x[end:]
+p.write_text(x)
+if 'api.ootoo.co.kr/cou/land.php' not in x or 'getQueryParameter("land")' not in x or 'onCreateWindow' not in x: raise SystemExit("V29_RESOLVER_VERIFY_FAILED")
+print("V29_FALLCENT_REAL_LINK_RESOLVER_OK")
