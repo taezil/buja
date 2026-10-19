@@ -34,12 +34,14 @@ jobs:
           s=open(p).read()
           marker='    public synchronized PageResult scanListings(String url, String source, long timeoutMs) {'
           inject='        if ("FALLCENT".equals(source)) {\\n            WebFetcher.Result r = WebFetcher.fetch(url);\\n            out.finalUrl = r.finalUrl;\\n            if (r.code >= 200 && r.code < 400 && r.body != null && !r.body.isEmpty()) {\\n                out.items.addAll(PageScanner.scan(r.body, r.finalUrl, source));\\n                out.productLinks = out.items.size();\\n                out.ok = !out.items.isEmpty();\\n                out.status = out.ok ? "정상 " + out.items.size() + "상품" : "폴센트 상품 파싱 0개";\\n                if (!out.ok) out.error = out.status;\\n            } else {\\n                out.blocked = r.code == 403 || r.code == 429;\\n                out.error = r.code > 0 ? "HTTP " + r.code : (r.error.isEmpty() ? "네트워크 오류" : r.error);\\n                out.status = out.error;\\n            }\\n            return out;\\n        }\\n'
+          inject=inject.replace('\\\\n','\\n')
           if marker not in s: raise SystemExit('BrowserScanner patch target not found')
           open(p,'w').write(s.replace(marker,marker+'\\n        PageResult out = new PageResult();\\n'+inject,1).replace('\\n        PageResult out = new PageResult();\\n        PageResult out = new PageResult();','\\n        PageResult out = new PageResult();',1))
           p='app/src/main/java/com/dealflash/app/MonitorService.java'
           s=open(p).read()
           old='HistoryStore.save(this,history);'
           new='HistoryStore.save(this,history);\\n            if(p.ok) ServerSync.uploadDeals(p.items, feed.source);\\n            ServerSync.monitor(p.ok?200:(p.blocked?403:(p.timeout?408:500)), p.items==null?0:p.items.size(), (int)(hits-ScannerPrefs.hits(this)), System.currentTimeMillis()-roundStart, p.ok?null:state);'
+          new=new.replace('\\\\n','\\n')
           if old not in s: raise SystemExit('monitor patch target not found')
           open(p,'w').write(s.replace(old,new))
           PY
