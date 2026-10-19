@@ -786,3 +786,28 @@ x=x.replace(needle,repl,1)
 p.write_text(x)
 if '})()",dom->{if(dom!=null)r.log("DOM "+dom' not in x: raise SystemExit("V42C_VERIFY_FAILED")
 print("V42C_CALLBACK_SHADOW_FIX_OK")
+
+
+# v4.3: fcnt short links are blocked in embedded WebView (403). Do not retry the blocked bridge.
+# Route fcnt through the system browser, where the same user/device browser context can complete
+# Cloudflare/redirect handling. Fallcent detail URLs still use the in-app CTA resolver.
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+# Insert early, immediately after normalized input logging, before HTTP/WebView resolver work.
+needle='''r.log("INPUT "+url);'''
+if needle not in x: raise SystemExit("V43_INPUT_ANCHOR_MISSING")
+insert='''r.log("INPUT "+url);
+    try{
+      android.net.Uri iu=android.net.Uri.parse(url);
+      String ih=iu.getHost()==null?"":iu.getHost().toLowerCase(java.util.Locale.ROOT);
+      if(ih.equals("fcnt.link")||ih.endsWith(".fcnt.link")){
+        r.log("FCNT_BROWSER "+url);
+        android.content.Intent bi=new android.content.Intent(android.content.Intent.ACTION_VIEW,iu);
+        a.startActivity(bi);
+        return;
+      }
+    }catch(Exception ignore){}'''
+x=x.replace(needle,insert,1)
+p.write_text(x)
+if 'FCNT_BROWSER' not in x: raise SystemExit("V43_VERIFY_FAILED")
+print("V43_FCNT_SYSTEM_BROWSER_HANDOFF_OK")
