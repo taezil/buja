@@ -842,3 +842,12 @@ x=x.replace(bad,'''done[0]=true; clean();''')
 p.write_text(x)
 if 'done=true; clean();' in x: raise SystemExit("V44B_VERIFY_FAILED")
 print("V44B_DONE_ARRAY_FIX_OK")
+
+
+# v4.4c resolver has no clean() helper; finish by flag only, existing timeout cleanup handles WebView.
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+x=x.replace('''done[0]=true; clean();''','''done[0]=true;''')
+p.write_text(x)
+if 'done[0]=true; clean();' in x: raise SystemExit("V44C_VERIFY_FAILED")
+print("V44C_REMOVE_MISSING_CLEAN_OK")
