@@ -789,6 +789,7 @@ print("V42C_CALLBACK_SHADOW_FIX_OK")
 
 
 # v4.3: confirmed fcnt.link returns 403 in embedded WebView. Patch generated source structurally.
+import re
 p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
 x=p.read_text()
 # Find the method containing the FALLCENT resolver invocation via the stable public call name.
