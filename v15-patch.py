@@ -638,3 +638,22 @@ x=x[:a]+method+x[b:]
 p.write_text(x)
 if "document.querySelectorAll('a[href]')" not in x or "for(var k=0;k<7" not in x: raise SystemExit("V37_VERIFY_FAILED")
 print("V37_FALLCENT_SCAN_RECOVERY_OK")
+
+
+# v3.8 fcnt.link returns 403 on device: stop retry storm and fall back to user-gesture browser flow
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+# Never keep retrying fcnt through HttpURLConnection after Cloudflare/403; open it as an ACTION_VIEW flow instead.
+old='''int code=cn.getResponseCode();String loc=cn.getHeaderField("Location");log("HTTP "+code+" "+cur+" -> "+loc);cn.disconnect();if(loc==null||loc.isEmpty())break;cur=new java.net.URL(new java.net.URL(cur),loc).toString();final String got=cur;a.runOnUiThread(()->finish(got));if(coup(cur))break;'''
+new='''int code=cn.getResponseCode();String loc=cn.getHeaderField("Location");log("HTTP "+code+" "+cur+" -> "+loc);cn.disconnect();if(code==403){final String blocked=cur;a.runOnUiThread(()->{log("FCNT_403_BROWSER_FALLBACK");try{android.content.Intent bi=new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(blocked));bi.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);c.startActivity(bi);}catch(Exception e){log("BROWSER_FALLBACK_ERR "+e.getClass().getSimpleName());}});break;}if(loc==null||loc.isEmpty())break;cur=new java.net.URL(new java.net.URL(cur),loc).toString();final String got=cur;a.runOnUiThread(()->finish(got));if(coup(cur))break;'''
+if old not in x: raise SystemExit("V38_HTTP_TARGET_MISSING")
+x=x.replace(old,new,1)
+# WebView 403 is decisive too: don't spam the same trace/reload path.
+old='''@Override public void onReceivedHttpError(android.webkit.WebView v,android.webkit.WebResourceRequest req,android.webkit.WebResourceResponse e){r.log("HTTP_WEB "+e.getStatusCode()+" "+req.getUrl());}'''
+new='''@Override public void onReceivedHttpError(android.webkit.WebView v,android.webkit.WebResourceRequest req,android.webkit.WebResourceResponse e){String eu=req.getUrl().toString();r.log("HTTP_WEB "+e.getStatusCode()+" "+eu);if(e.getStatusCode()==403&&eu.contains("fcnt.link")){done[0]=true;try{root.removeView(w);}catch(Exception ignored){}try{android.content.Intent bi=new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(eu));bi.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);c.startActivity(bi);Toast.makeText(c,"폴센트 보안 차단으로 브라우저에서 쿠팡 링크를 이어갑니다.",Toast.LENGTH_LONG).show();} }'''
+if old not in x: raise SystemExit("V38_WEB403_TARGET_MISSING")
+x=x.replace(old,new,1)
+p.write_text(x)
+for z in ["FCNT_403_BROWSER_FALLBACK","e.getStatusCode()==403&&eu.contains(\"fcnt.link\")"]:
+    if z not in x: raise SystemExit("V38_VERIFY_FAILED "+z)
+print("V38_FCNT_403_FALLBACK_OK")
