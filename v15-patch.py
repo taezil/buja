@@ -1244,3 +1244,120 @@ x=p.read_text().replace("java.util.LinkedHashMap<String,HistoryStore.H> map=Hist
 p.write_text(x)
 if "java.util.Map<String,HistoryStore.H> map=HistoryStore.load(c);" not in x: raise SystemExit("V54C_MAP_FIX_FAILED")
 print("V54C_MAP_FIX_OK")
+
+
+# v6.0 DealFlash premium UX + categories + normalized names + real D1 history chart + deal intelligence.
+from pathlib import Path
+base=Path("app/src/main/java/com/dealflash/app")
+
+(base/"ProductUX.java").write_text(r'''package com.dealflash.app;
+public final class ProductUX{
+ private ProductUX(){}
+ public static String clean(String s){
+  if(s==null)return "";
+  String x=s.replaceAll("(?i)(역대급\\s*최저가|역대급|최저가\\s*타이밍|타이밍|판매자\\s*로켓|판매자로켓|로켓\\s*배송|로켓배송|오늘의\\s*특가|초특가|특가|핫딜|추천상품|추천|득템|놓치면\\s*후회)"," ");
+  x=x.replaceAll("[🔥🚀⚡💥⭐★]+"," ").replaceAll("\\s{2,}"," ").replaceAll("^[\\s|·:,-]+|[\\s|·:,-]+$","");
+  return x.trim().isEmpty()?s.trim():x.trim();
+ }
+ public static String category(String s){
+  String x=(s==null?"":s).toLowerCase();
+  if(has(x,"기저귀","분유","유아","아기","베이비","출산","젖병","유모차","카시트"))return "육아";
+  if(has(x,"노트북","모니터","tv","티비","냉장고","세탁기","건조기","에어컨","청소기","이어폰","헤드폰","ssd","갤럭시","아이폰","아이패드","태블릿","키보드","마우스","가전","전자"))return "가전/디지털";
+  if(has(x,"라면","과자","커피","생수","음료","쌀","고기","닭","참치","식품","김치","우유","치즈","과일","견과","소스","간식"))return "식품";
+  if(has(x,"티셔츠","셔츠","바지","팬츠","자켓","재킷","코트","신발","운동화","원피스","속옷","의류","패딩","양말"))return "패션";
+  if(has(x,"샴푸","화장품","크림","로션","세럼","선크림","마스크팩","향수","뷰티","클렌징"))return "뷰티";
+  if(has(x,"강아지","고양이","사료","간식","배변","반려","펫"))return "반려동물";
+  if(has(x,"캠핑","골프","러닝","등산","자전거","운동","스포츠","낚시"))return "스포츠/레저";
+  if(has(x,"자동차","차량","와이퍼","세차","엔진","타이어","카매트"))return "자동차";
+  if(has(x,"침대","의자","책상","소파","매트리스","수납","가구","인테리어","조명"))return "가구/인테리어";
+  if(has(x,"세제","휴지","물티슈","주방","프라이팬","냄비","청소","생활","수건","텀블러"))return "생활/주방";
+  if(has(x,"비타민","유산균","단백질","건강","영양제","오메가"))return "건강";
+  return "기타";
+ }
+ static boolean has(String x,String... a){for(String z:a)if(x.contains(z))return true;return false;}
+ public static String grade(int drop,int score){
+  int q=Math.max(score,drop>=65?96:drop>=55?90:drop>=45?84:drop>=30?74:60);
+  return q>=95?"S+":q>=88?"S":q>=80?"A":q>=70?"B":"C";
+ }
+ public static String verdict(int drop,int score){
+  String g=grade(drop,score);return ("S+".equals(g)||"S".equals(g))?"지금 확인할 가치가 높은 딜":"A".equals(g)?"가격 메리트가 큰 편":"B".equals(g)?"조건 확인 후 구매":"평소 가격과 비교 권장";
+ }
+}''')
+
+(base/"PriceHistoryView.java").write_text(r'''package com.dealflash.app;
+public class PriceHistoryView extends android.view.View{
+ private final java.util.ArrayList<Float> p=new java.util.ArrayList<>();
+ private final android.graphics.Paint line=new android.graphics.Paint(1),grid=new android.graphics.Paint(1),txt=new android.graphics.Paint(1);
+ public PriceHistoryView(android.content.Context c){super(c);setMinimumHeight(dp(220));line.setStrokeWidth(dp(3));line.setColor(0xffef4444);line.setStyle(android.graphics.Paint.Style.STROKE);grid.setColor(0xffe5e7eb);grid.setStrokeWidth(1);txt.setColor(0xff64748b);txt.setTextSize(dp(11));}
+ int dp(int v){return (int)(v*getResources().getDisplayMetrics().density+.5f);}
+ public void setHistory(org.json.JSONArray a){p.clear();if(a!=null)for(int i=0;i<a.length();i++){org.json.JSONObject o=a.optJSONObject(i);if(o!=null){float v=(float)o.optDouble("price",0);if(v>0)p.add(v);}}invalidate();}
+ protected void onDraw(android.graphics.Canvas c){super.onDraw(c);float w=getWidth(),h=getHeight(),l=dp(12),r=w-dp(12),top=dp(22),bot=h-dp(28);for(int i=0;i<4;i++){float y=top+(bot-top)*i/3f;c.drawLine(l,y,r,y,grid);}if(p.size()<2){c.drawText(p.size()==1?"가격 이력이 더 쌓이면 그래프가 표시돼요":"서버 가격 이력을 불러오는 중…",l,h/2,txt);return;}float mn=Float.MAX_VALUE,mx=0;for(float v:p){mn=Math.min(mn,v);mx=Math.max(mx,v);}if(mx<=mn)mx=mn+1;android.graphics.Path path=new android.graphics.Path();for(int i=0;i<p.size();i++){float x=l+(r-l)*i/(p.size()-1f);float y=bot-(p.get(i)-mn)/(mx-mn)*(bot-top);if(i==0)path.moveTo(x,y);else path.lineTo(x,y);}c.drawPath(path,line);c.drawText("최고 "+won(mx),l,dp(14),txt);c.drawText("최저 "+won(mn),l,bot+dp(20),txt);String n="관측 "+p.size()+"회";c.drawText(n,r-txt.measureText(n),dp(14),txt);}
+ String won(float v){return String.format(java.util.Locale.KOREA,"%,.0f원",v);}
+}''')
+
+p=base/"ServerSync.java"; x=p.read_text()
+if "fetchHistory(" not in x:
+ pos=x.rfind("}")
+ method=r'''
+ public static void fetchHistory(final android.app.Activity a,String key,final PriceHistoryView chart){
+  new Thread(()->{java.net.HttpURLConnection h=null;try{
+   String enc=java.net.URLEncoder.encode(key,"UTF-8");java.net.URL u=new java.net.URL(BASE+"/api/history/"+enc);
+   h=(java.net.HttpURLConnection)u.openConnection();h.setConnectTimeout(8000);h.setReadTimeout(8000);h.setRequestMethod("GET");
+   if(h.getResponseCode()/100!=2)return;java.io.BufferedReader br=new java.io.BufferedReader(new java.io.InputStreamReader(h.getInputStream(),"UTF-8"));StringBuilder sb=new StringBuilder();String z;while((z=br.readLine())!=null)sb.append(z);
+   final org.json.JSONArray ar=new org.json.JSONObject(sb.toString()).optJSONArray("history");a.runOnUiThread(()->chart.setHistory(ar));
+  }catch(Exception ignored){}finally{if(h!=null)h.disconnect();}}).start();
+ }
+'''
+ x=x[:pos]+method+x[pos:]
+ p.write_text(x)
+
+p=base/"MainActivity.java"; x=p.read_text()
+# Keep working AppLauncher completely untouched.
+if 'String selectedCategory=' not in x:
+ pos=x.find('{',x.find('class MainActivity'))+1
+ x=x[:pos]+' String selectedCategory="전체";'+x[pos:]
+
+# Category carousel on Hot list; filtering is applied inside hotCard.
+hs=x.find('void showHot(){')
+he=x.find('void hotCard(',hs)
+if hs<0 or he<0: raise SystemExit("V60_HOT_METHODS_MISSING")
+seg=x[hs:he]
+if 'categoryBarV6' not in seg:
+ target='content.removeAllViews();'
+ if target not in seg: raise SystemExit("V60_HOT_CLEAR_MISSING")
+ cats='''content.removeAllViews();android.widget.HorizontalScrollView categoryBarV6=new android.widget.HorizontalScrollView(this);categoryBarV6.setHorizontalScrollBarEnabled(false);LinearLayout categoryRowV6=new LinearLayout(this);String[] categoryNamesV6={"전체","가전/디지털","육아","식품","패션","생활/주방","뷰티","건강","반려동물","스포츠/레저","자동차","가구/인테리어","기타"};for(String cnV6:categoryNamesV6){Button cbV6=ghost(cnV6);cbV6.setAlpha(cnV6.equals(selectedCategory)?1f:.62f);cbV6.setOnClickListener(v->{selectedCategory=((Button)v).getText().toString();showHot();});categoryRowV6.addView(cbV6,new LinearLayout.LayoutParams(-2,dp(42)));}categoryBarV6.addView(categoryRowV6);content.addView(categoryBarV6,new LinearLayout.LayoutParams(-1,dp(48)));'''
+ seg=seg.replace(target,cats,1); x=x[:hs]+seg+x[he:]
+
+# Upgrade hot card: category filter + clean title + separate semantic badges.
+hc=x.find('void hotCard('); hp=x.find(' void showPopular(){',hc)
+if hc<0 or hp<0: raise SystemExit("V60_HOTCARD_RANGE_MISSING")
+seg=x[hc:hp]
+brace=seg.find('{')+1
+if 'ProductUX.category(d.title)' not in seg:
+ seg=seg[:brace]+'String catV6=ProductUX.category(d.title);if(!"전체".equals(selectedCategory)&&!selectedCategory.equals(catV6))return;'+seg[brace:]
+seg=seg.replace('cleanTitle(d.title)','ProductUX.clean(d.title)')
+seg=seg.replace('info.addView(badges);','badges.addView(pill("  "+catV6,0xFF475569));badges.addView(pill("  "+ProductUX.grade(d.dropPct,0),0xFF7C3AED));info.addView(badges);',1)
+x=x[:hc]+seg+x[hp:]
+
+# Popular card/detail names are normalized too.
+x=x.replace('cleanTitle(x.title)','ProductUX.clean(x.title)')
+x=x.replace('cleanTitle(h.title)','ProductUX.clean(h.title)')
+
+# Premium Hot detail with decision summary and REAL server price_history chart.
+a=x.find(' void showHotDetail('); b=x.find(' void keywordDialog()',a)
+if a<0 or b<0: raise SystemExit("V60_DETAIL_RANGE_MISSING")
+detail=r''' void showHotDetail(String key){screen="HOT_DETAIL";HotDealStore.Hot d=null;for(HotDealStore.Hot z:HotDealStore.all(this))if(z.key.equals(key)){d=z;break;}if(d==null){showHot();return;}content.removeAllViews();Button back=ghost("← 급락 목록");back.setOnClickListener(v->showHot());content.addView(back);String iu=d.imageUrl;if(iu==null||iu.isEmpty()){HistoryStore.H hi=HistoryStore.load(this).get(d.key);if(hi!=null)iu=hi.imageUrl;}if(iu!=null&&!iu.isEmpty()){ImageView im=new ImageView(this);im.setScaleType(ImageView.ScaleType.CENTER_CROP);content.addView(im,new LinearLayout.LayoutParams(-1,dp(230)));loadImage(im,iu);}TextView cat=t(ProductUX.category(d.title)+"  ·  DEAL "+ProductUX.grade(d.dropPct,0),13,true);cat.setTextColor(0xFF7C3AED);content.addView(cat);content.addView(t(ProductUX.clean(d.title),22,true));TextView p=t(money(d.current)+"   ▼ "+d.dropPct+"%",30,true);p.setTextColor(RED);content.addView(p);content.addView(t("기준가 "+money(d.reference)+"  →  현재 "+money(d.current),13,false));LinearLayout decision=card();decision.addView(t("지금 사도 될까?",18,true));TextView vd=t(ProductUX.verdict(d.dropPct,0),16,true);vd.setTextColor(d.dropPct>=45?0xFF16A34A:0xFFF59E0B);decision.addView(vd);decision.addView(t(fire(d.dropPct)+"\\n표시 할인율보다 실제 가격이력을 우선 확인해.",13,false));content.addView(decision);content.addView(t("실제 가격 이력",20,true));LinearLayout graph=card();PriceHistoryView chart=new PriceHistoryView(this);graph.addView(chart,new LinearLayout.LayoutParams(-1,dp(240)));graph.addView(t("D1 서버에 저장된 가격 변경 기록 기준",12,false));content.addView(graph);ServerSync.fetchHistory(this,d.key,chart);LinearLayout verify=card();verify.addView(t("실시간 검증",16,true));verify.addView(t("발견 "+date(d.foundAt)+"\\n마지막 검증 "+date(d.lastVerifiedAt),13,false));content.addView(verify);Button open=primary("쿠팡에서 상품 보기");final HotDealStore.Hot fd=d;open.setOnClickListener(v->{HistoryStore.H hh=HistoryStore.load(this).get(fd.key);AppLauncher.openProduct(this,"FALLCENT",hh!=null?hh.url:fd.url);});content.addView(open,new LinearLayout.LayoutParams(-1,dp(60)));}
+'''
+x=x[:a]+detail+x[b:]
+
+# Popular detail also gets the real history chart while retaining the proven Coupang route.
+a=x.find(' void showPopularDetail('); b=x.find(' void showHotDetail(',a)
+if a>=0 and b>a:
+ pop=r''' void showPopularDetail(HistoryStore.H h){screen="POPULAR_DETAIL";content.removeAllViews();Button back=ghost("← 인기 목록");back.setOnClickListener(v->showPopular());content.addView(back);if(h.imageUrl!=null&&!h.imageUrl.isEmpty()){ImageView im=new ImageView(this);im.setScaleType(ImageView.ScaleType.CENTER_CROP);content.addView(im,new LinearLayout.LayoutParams(-1,dp(220)));loadImage(im,h.imageUrl);}TextView cat=t(ProductUX.category(h.title)+"  ·  DEAL "+ProductUX.grade(h.declaredDiscountPct,h.dealScore),13,true);cat.setTextColor(0xFF7C3AED);content.addView(cat);content.addView(t(ProductUX.clean(h.title),22,true));TextView pr=t(money(h.last)+(h.declaredDiscountPct>0?"   ▼ "+h.declaredDiscountPct+"%":""),28,true);pr.setTextColor(RED);content.addView(pr);LinearLayout info=card();info.addView(t("구매 판단",18,true));info.addView(t(ProductUX.verdict(h.declaredDiscountPct,h.dealScore)+"\\nDEAL "+h.dealScore+"점 · "+ago(h.lastSeen)+" 확인",13,false));content.addView(info);content.addView(t("실제 가격 이력",20,true));LinearLayout gc=card();PriceHistoryView chart=new PriceHistoryView(this);gc.addView(chart,new LinearLayout.LayoutParams(-1,dp(240)));content.addView(gc);ServerSync.fetchHistory(this,h.key,chart);Button open=primary("쿠팡에서 상품 보기");open.setOnClickListener(v->AppLauncher.openProduct(this,"FALLCENT",h.url));content.addView(open,new LinearLayout.LayoutParams(-1,dp(60)));}
+'''
+ x=x[:a]+pop+x[b:]
+
+p.write_text(x)
+for fn,needle in [("ProductUX.java","가전/디지털"),("PriceHistoryView.java","관측 "),("ServerSync.java","/api/history/"),("MainActivity.java","categoryNamesV6"),("MainActivity.java","ServerSync.fetchHistory"),("MainActivity.java","ProductUX.clean")]:
+ if needle not in (base/fn).read_text(): raise SystemExit("V60_VERIFY "+fn)
+print("V60_PREMIUM_UX_CATEGORY_HISTORY_INTELLIGENCE_OK")
