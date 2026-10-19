@@ -414,3 +414,40 @@ x=x.replace(needle,replacement,1)
 p.write_text(x)
 if "HttpURLConnection" not in x or "setInstanceFollowRedirects(false)" not in x: raise SystemExit("V32_HTTP_REDIRECT_VERIFY_FAILED")
 print("V32_FCNT_HTTP_REDIRECT_RESOLVER_OK")
+
+
+# v3.3 resolver hardening based on independent review:
+# attach resolver WebView to the Activity, enable popup JS/multiple windows/cookies,
+# use a normal mobile UA, intercept subresource requests, and click Fallcent's CTA if needed.
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+x=x.replace('w.getSettings().setJavaScriptEnabled(true);w.getSettings().setDomStorageEnabled(true);',
+'''w.getSettings().setJavaScriptEnabled(true);w.getSettings().setDomStorageEnabled(true);
+     w.getSettings().setSupportMultipleWindows(true);w.getSettings().setJavaScriptCanOpenWindowsAutomatically(true);
+     w.getSettings().setUserAgentString("Mozilla/5.0 (Linux; Android 14; SM-S918N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36");
+     android.webkit.CookieManager.getInstance().setAcceptCookie(true);
+     android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(w,true);
+     final android.view.ViewGroup root=(android.view.ViewGroup)a.getWindow().getDecorView();
+     android.widget.FrameLayout.LayoutParams hiddenLp=new android.widget.FrameLayout.LayoutParams(1,1);
+     w.setAlpha(0.01f);root.addView(w,hiddenLp);''',1)
+# Ensure cleanup removes attached view.
+x=x.replace('try{w.stopLoading();}catch(Exception ignored){}openCoupang(c,q);try{w.destroy();}catch(Exception ignored){}',
+'''try{w.stopLoading();}catch(Exception ignored){}openCoupang(c,q);try{root.removeView(w);}catch(Exception ignored){}try{w.destroy();}catch(Exception ignored){}''',1)
+x=x.replace('try{w.destroy();}catch(Exception ignored){}Toast.makeText(c,"쿠팡 바로가기 주소를 찾지 못했어.",Toast.LENGTH_LONG).show();',
+'''try{root.removeView(w);}catch(Exception ignored){}try{w.destroy();}catch(Exception ignored){}Toast.makeText(c,"쿠팡 바로가기 주소를 찾지 못했어.",Toast.LENGTH_LONG).show();''',1)
+# Observe subresource/network requests too.
+target='''@Override public void doUpdateVisitedHistory(android.webkit.WebView v,String z,boolean reload){r.go(z);}
+      @Override public void onPageFinished'''
+if target not in x: raise SystemExit("V33_WEBCLIENT_TARGET_MISSING")
+x=x.replace(target,'''@Override public void doUpdateVisitedHistory(android.webkit.WebView v,String z,boolean reload){r.go(z);}
+      @Override public android.webkit.WebResourceResponse shouldInterceptRequest(android.webkit.WebView v,android.webkit.WebResourceRequest req){String z=req.getUrl().toString();if(r.coup(z))a.runOnUiThread(()->r.go(z));return null;}
+      @Override public void onPageFinished''',1)
+# Stronger DOM: capture fcnt/adjoin/coupang and click CTA if href is generated only by click.
+old="(function(){var aa=[].slice.call(document.querySelectorAll('a[href]'));var a=aa.find(function(e){var h=e.href||'';var t=(e.innerText||'').replace(/\\s+/g,' ');return /쿠팡\\s*바로가기|쿠팡.*구매|구매하러/.test(t)||h.indexOf('api.ootoo.co.kr/cou/land.php')>=0||h.indexOf('api.adjoin.co.kr/cou/land.php')>=0||h.indexOf('fcnt.link/')>=0||h.indexOf('link.coupang.com')>=0;});return a?a.href:'';})()"
+new="(function(){var aa=[].slice.call(document.querySelectorAll('a[href]'));var a=aa.find(function(e){var h=e.href||'';var t=(e.innerText||'').replace(/\\s+/g,' ');return /쿠팡\\s*바로가기|쿠팡.*구매|구매하러|최저가/.test(t)||h.indexOf('api.ootoo.co.kr/cou/land.php')>=0||h.indexOf('api.adjoin.co.kr/cou/land.php')>=0||h.indexOf('fcnt.link/')>=0||h.indexOf('link.coupang.com')>=0;});if(a){var h=a.href||'';if(h)return h;a.click();}var b=[].slice.call(document.querySelectorAll('button,[role=button]')).find(function(e){return /쿠팡|바로가기|구매|최저가/.test((e.innerText||'')+(e.getAttribute('aria-label')||''));});if(b)b.click();return '';})()"
+if old not in x: raise SystemExit("V33_JS_TARGET_MISSING")
+x=x.replace(old,new,1)
+p.write_text(x)
+checks=["setSupportMultipleWindows(true)","setAcceptThirdPartyCookies(w,true)","root.addView(w,hiddenLp)","shouldInterceptRequest","/쿠팡|바로가기|구매|최저가/"]
+if not all(z in x for z in checks): raise SystemExit("V33_VERIFY_FAILED")
+print("V33_ATTACHED_WEBVIEW_NETWORK_POPUP_OK")
