@@ -831,3 +831,14 @@ else:
 p.write_text(x)
 if 'ACTION_VIEW,android.net.Uri.parse(q)' not in x: raise SystemExit("V44_VERIFY_FAILED")
 print("V44_CTA_FCNT_BROWSER_ROUTE_OK")
+
+
+# v4.4b compile fix: resolver completion flag is boolean[] done.
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+bad='''done=true; clean();'''
+if bad not in x: raise SystemExit("V44B_TARGET_MISSING")
+x=x.replace(bad,'''done[0]=true; clean();''')
+p.write_text(x)
+if 'done=true; clean();' in x: raise SystemExit("V44B_VERIFY_FAILED")
+print("V44B_DONE_ARRAY_FIX_OK")
