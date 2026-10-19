@@ -495,3 +495,64 @@ p.write_text(x)
 for z in ["tries[0]++>=24","v.postDelayed(poll[0],500)","getHost()","ii.getData()"]:
     if z not in x: raise SystemExit("V34_VERIFY_FAILED "+z)
 print("V34_SPA_POLL_HOST_INTENT_OK")
+
+
+# v3.5 replace resolver atomically: SPA polling + bridge redirects + strict host + intent handling
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+a=x.index(' static void resolveFallcent(Context c,String u){')
+b=x.index(' static void openCoupang(',a)
+resolver=r''' static void resolveFallcent(Context c,String u){
+  if(!(c instanceof android.app.Activity)){Toast.makeText(c,"쿠팡 링크 확인 실패",Toast.LENGTH_SHORT).show();return;}
+  android.app.Activity a=(android.app.Activity)c;
+  a.runOnUiThread(()->{
+    Toast.makeText(c,"쿠팡 상품으로 연결 중…",Toast.LENGTH_SHORT).show();
+    final android.webkit.WebView w=new android.webkit.WebView(c);
+    w.getSettings().setJavaScriptEnabled(true);w.getSettings().setDomStorageEnabled(true);
+    w.getSettings().setSupportMultipleWindows(true);w.getSettings().setJavaScriptCanOpenWindowsAutomatically(true);
+    w.getSettings().setUserAgentString("Mozilla/5.0 (Linux; Android 14; SM-S918N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36");
+    android.webkit.CookieManager.getInstance().setAcceptCookie(true);android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(w,true);
+    final android.view.ViewGroup root=(android.view.ViewGroup)a.getWindow().getDecorView();
+    w.setAlpha(0.01f);root.addView(w,new android.widget.FrameLayout.LayoutParams(1,1));
+    final boolean[] done={false};final StringBuilder trace=new StringBuilder("INPUT ").append(u);
+    class R{
+      void log(String m){android.util.Log.d("FC_TRACE",m);trace.append("\n").append(m);}
+      String norm(String z){
+        if(z==null)return null;
+        try{
+          if(z.startsWith("intent://")){android.content.Intent ii=android.content.Intent.parseUri(z,android.content.Intent.URI_INTENT_SCHEME);android.net.Uri d=ii.getData();if(d!=null&&d.getScheme()!=null&&d.getScheme().startsWith("http"))z=d.toString();else{String fb=ii.getStringExtra("browser_fallback_url");if(fb!=null)z=fb;}}
+          android.net.Uri q=android.net.Uri.parse(z);String h=q.getHost();
+          if(h!=null&&(h.equals("api.adjoin.co.kr")||h.equals("api.ootoo.co.kr"))){String land=q.getQueryParameter("land");if(land!=null&&!land.isEmpty())z=land;}
+        }catch(Exception e){log("NORMALIZE_ERR "+e.getClass().getSimpleName());}
+        return z;
+      }
+      boolean coup(String z){z=norm(z);if(z==null)return false;if(z.startsWith("coupang://"))return true;try{String h=android.net.Uri.parse(z).getHost();return h!=null&&(h.equals("link.coupang.com")||h.equals("coupang.com")||h.equals("www.coupang.com")||h.equals("m.coupang.com"));}catch(Exception e){return false;}}
+      boolean bridge(String z){try{String h=android.net.Uri.parse(z).getHost();return h!=null&&(h.equals("fcnt.link")||h.equals("api.adjoin.co.kr")||h.equals("api.ootoo.co.kr"));}catch(Exception e){return false;}}
+      void finish(String z){if(done[0])return;String q=norm(z);if(!coup(q))return;done[0]=true;log("COUPANG "+q);try{w.stopLoading();}catch(Exception ignored){}try{root.removeView(w);}catch(Exception ignored){}openCoupang(c,q);try{w.destroy();}catch(Exception ignored){}}
+      void follow(String z){if(done[0]||z==null||z.isEmpty())return;log("SEEN "+z);String q=norm(z);if(coup(q)){finish(q);return;}if(bridge(q)){final String first=q;new Thread(()->{String cur=first;try{for(int hop=0;hop<8&&!done[0];hop++){java.net.HttpURLConnection cn=(java.net.HttpURLConnection)new java.net.URL(cur).openConnection();cn.setInstanceFollowRedirects(false);cn.setConnectTimeout(5000);cn.setReadTimeout(5000);cn.setRequestProperty("User-Agent",w.getSettings().getUserAgentString());cn.setRequestProperty("Referer","https://fallcent.com/");String ck=android.webkit.CookieManager.getInstance().getCookie(cur);if(ck!=null)cn.setRequestProperty("Cookie",ck);int code=cn.getResponseCode();String loc=cn.getHeaderField("Location");log("HTTP "+code+" "+cur+" -> "+loc);cn.disconnect();if(loc==null||loc.isEmpty())break;cur=new java.net.URL(new java.net.URL(cur),loc).toString();final String got=cur;a.runOnUiThread(()->finish(got));if(coup(cur))break;}}catch(Exception e){log("HTTP_ERR "+e.getClass().getSimpleName());}a.runOnUiThread(()->{if(!done[0])w.loadUrl(first);});}).start();}}
+    }
+    final R r=new R();
+    w.setWebChromeClient(new android.webkit.WebChromeClient(){@Override public boolean onCreateWindow(android.webkit.WebView v,boolean d,boolean g,android.os.Message msg){android.webkit.WebView child=new android.webkit.WebView(c);child.getSettings().setJavaScriptEnabled(true);child.setWebViewClient(new android.webkit.WebViewClient(){@Override public boolean shouldOverrideUrlLoading(android.webkit.WebView vv,android.webkit.WebResourceRequest req){r.follow(req.getUrl().toString());return r.coup(req.getUrl().toString());}@Override public void onPageStarted(android.webkit.WebView vv,String z,android.graphics.Bitmap b){r.follow(z);}});((android.webkit.WebView.WebViewTransport)msg.obj).setWebView(child);msg.sendToTarget();return true;}});
+    w.setWebViewClient(new android.webkit.WebViewClient(){
+      @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView v,android.webkit.WebResourceRequest req){String z=req.getUrl().toString();r.follow(z);return r.coup(z);}
+      @Override public void onPageStarted(android.webkit.WebView v,String z,android.graphics.Bitmap b){r.log("START "+z);r.follow(z);}
+      @Override public void doUpdateVisitedHistory(android.webkit.WebView v,String z,boolean reload){r.follow(z);}
+      @Override public android.webkit.WebResourceResponse shouldInterceptRequest(android.webkit.WebView v,android.webkit.WebResourceRequest req){String z=req.getUrl().toString();if(r.coup(z))a.runOnUiThread(()->r.finish(z));return null;}
+      @Override public void onReceivedError(android.webkit.WebView v,android.webkit.WebResourceRequest req,android.webkit.WebResourceError e){r.log("WEB_ERR "+e.getErrorCode()+" "+req.getUrl());}
+      @Override public void onReceivedHttpError(android.webkit.WebView v,android.webkit.WebResourceRequest req,android.webkit.WebResourceResponse e){r.log("HTTP_WEB "+e.getStatusCode()+" "+req.getUrl());}
+      @Override public void onPageFinished(android.webkit.WebView v,String z){
+        r.log("FINISH "+z);r.follow(z);if(done[0])return;
+        final int[] tries={0};final Runnable[] poll={null};
+        poll[0]=()->{if(done[0]||tries[0]++>=24)return;v.evaluateJavascript("(function(){var as=[].slice.call(document.querySelectorAll('a[href]'));var a=as.find(function(e){var h=e.href||'';return /link\\.coupang\\.com|fcnt\\.link\\/|adjoin\\.co\\.kr\\/cou\\/land|ootoo\\.co\\.kr\\/cou\\/land/.test(h);});if(a)return a.href;var m=document.documentElement.innerHTML.match(/https?:\\/\\/link\\.coupang\\.com\\/[^\\s\"'<>\\\\]+/);if(m)return m[0];var b=[].slice.call(document.querySelectorAll('a,button,[role=button]')).find(function(e){return /쿠팡\\s*바로가기|쿠팡.*구매|구매하러/.test(e.innerText||'');});if(b)b.click();return '';})()",q->{if(q!=null){String d=q.replace("\\u0026","&").replace("\\u003D","=");if(d.length()>1&&d.charAt(0)==34&&d.charAt(d.length()-1)==34)d=d.substring(1,d.length()-1);if(!d.isEmpty())r.follow(d);}if(!done[0])v.postDelayed(poll[0],500);});};poll[0].run();
+      }
+    });
+    w.loadUrl(u,java.util.Collections.singletonMap("Referer","https://fallcent.com/"));
+    new Handler(Looper.getMainLooper()).postDelayed(()->{if(!done[0]){done[0]=true;r.log("TIMEOUT");try{root.removeView(w);}catch(Exception ignored){}try{w.destroy();}catch(Exception ignored){}new android.app.AlertDialog.Builder(a).setTitle("쿠팡 링크 추적 실패").setMessage(trace.toString()).setPositiveButton("확인",null).show();}},13000);
+  });
+ }
+'''
+x=x[:a]+resolver+x[b:]
+p.write_text(x)
+for z in ["tries[0]++>=24","FC_TRACE","onReceivedHttpError","getHost()","ii.getData()","HTTP_ERR"]:
+    if z not in x: raise SystemExit("V35_VERIFY_FAILED "+z)
+print("V35_RESOLVER_DIAGNOSTIC_POLLING_OK")
