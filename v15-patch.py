@@ -788,16 +788,21 @@ if '})()",dom->{if(dom!=null)r.log("DOM "+dom' not in x: raise SystemExit("V42C_
 print("V42C_CALLBACK_SHADOW_FIX_OK")
 
 
-# v4.3: confirmed fcnt.link returns 403 in embedded WebView. Handle fcnt at public entry.
+# v4.3: confirmed fcnt.link returns 403 in embedded WebView. Patch generated source structurally.
 p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
 x=p.read_text()
-# Patch openProduct entry; this avoids depending on private resolver formatting.
-sig='''static void openProduct(Context c,String source,String url){'''
-if sig not in x:
-    sig='''public static void openProduct(Context c,String source,String url){'''
-if sig not in x: raise SystemExit("V43_OPENPRODUCT_MISSING")
+# Find the method containing the FALLCENT resolver invocation via the stable public call name.
+m=re.search(r'(static\s+void\s+\w+\s*\([^)]*String\s+source\s*,\s*String\s+url\s*\)\s*\{)',x)
+if not m:
+    m=re.search(r'(static\s+void\s+\w+\s*\([^)]*String\s+url\s*\)\s*\{)',x)
+if not m: raise SystemExit("V43_ENTRY_METHOD_MISSING")
 body='''\n  try{\n    if(url!=null){ android.net.Uri iu=android.net.Uri.parse(url); String ih=iu.getHost()==null?"":iu.getHost().toLowerCase(java.util.Locale.ROOT); if(ih.equals("fcnt.link")||ih.endsWith(".fcnt.link")){ c.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,iu)); return; } }\n  }catch(Exception ignore){}\n'''
-x=x.replace(sig,sig+body,1)
+# Only valid if the discovered method has Context c; otherwise use first Context parameter name.
+header=m.group(1)
+cm=re.search(r'Context\s+(\w+)',header)
+if not cm: raise SystemExit("V43_CONTEXT_PARAM_MISSING")
+body=body.replace('c.startActivity',cm.group(1)+'.startActivity')
+x=x[:m.end()]+body+x[m.end():]
 p.write_text(x)
 if 'ih.equals("fcnt.link")' not in x: raise SystemExit("V43_VERIFY_FAILED")
 print("V43_FCNT_SYSTEM_BROWSER_HANDOFF_OK")
