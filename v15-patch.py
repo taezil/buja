@@ -1153,3 +1153,26 @@ if(isInstalled(c,COUPANG)){try{Intent i=new Intent(Intent.ACTION_VIEW,Uri.parse(
 }'''
 p.write_text(x)
 print("V51_CLICK_FLOW_APPLAUNCHER_OK")
+
+
+# v5.2 Android system Back: detail -> owning list instead of finishing Activity/home.
+p=Path("app/src/main/java/com/dealflash/app/MainActivity.java")
+x=p.read_text()
+# Track logical screen without touching the working Coupang resolver.
+# showHot/showPopular are list roots; detail methods mark their detail state after clearing content.
+x=x.replace('void showHot(){','void showHot(){screen="HOT";',1)
+x=x.replace('void showPopular(){','void showPopular(){screen="POPULAR";',1)
+x=x.replace('void showHotDetail(String key){','void showHotDetail(String key){screen="HOT_DETAIL";',1)
+x=x.replace('void showPopularDetail(HistoryStore.H h){','void showPopularDetail(HistoryStore.H h){screen="POPULAR_DETAIL";',1)
+# Add field near class body if absent.
+if 'String screen=' not in x:
+    pos=x.find('{',x.find('class MainActivity'))+1
+    x=x[:pos]+' String screen="HOT";'+x[pos:]
+# Override system back once.
+if 'public void onBackPressed()' not in x:
+    pos=x.rfind('}')
+    method=''' @Override public void onBackPressed(){if("HOT_DETAIL".equals(screen)){showHot();return;}if("POPULAR_DETAIL".equals(screen)){showPopular();return;}super.onBackPressed();}\n'''
+    x=x[:pos]+method+x[pos:]
+p.write_text(x)
+if 'HOT_DETAIL' not in x or 'POPULAR_DETAIL' not in x or 'onBackPressed()' not in x: raise SystemExit("V52_BACK_VERIFY_FAILED")
+print("V52_DETAIL_BACK_NAV_OK")
