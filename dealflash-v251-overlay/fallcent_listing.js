@@ -1,5 +1,5 @@
 (function(){
-  /* Fallcent recommendation collector v2.5.1
+  /* Fallcent recommendation collector v2.5.2
    * Keep one product = one isolated card. Do not guess across card boundaries. */
   var RESERVED={recommend:1,ranking:1,list:1,search:1,category:1,home:1};
   var ROCKET=/(로켓배송|로켓프레시|로켓직구|판매자로켓)/;
@@ -14,11 +14,16 @@
   function info(h){
     try{
       var u=new URL(h||'',location.href),host=u.hostname.toLowerCase().replace(/^www\./,'');
+      if(host==='fcnt.link'){
+        var token=(u.pathname||'').replace(/^\/+|\/+$/g,'');
+        if(!token)return null;
+        return {id:'short:'+token,href:'https://fcnt.link/'+token};
+      }
       if(host!=='fallcent.com')return null;
       var m=u.pathname.match(/^\/product\/(.+?)\/?$/i);if(!m)return null;
       var rest=m[1].replace(/^\/+|\/+$/g,'');if(!rest)return null;
       var first=rest.split('/')[0].toLowerCase();if(RESERVED[first])return null;
-      return {id:rest,href:'https://fallcent.com/product/'+rest};
+      return {id:'detail:'+rest,href:'https://fallcent.com/product/'+rest};
     }catch(e){return null;}
   }
   function path(e){var s=[];for(var i=0;i<5&&e;i++,e=e.parentElement){s.push(e.tagName+(e.className&&String(e.className).trim()?'.'+String(e.className).trim().split(/\s+/)[0]:''));}return s.join('<');}
@@ -58,7 +63,13 @@
   for(var oi=0;oi<order.length&&out.length<240;oi++){
     var g=groups[order[oi]],best=null,bestText='';
     for(var ai=0;ai<g.anchors.length;ai++){
-      var el=g.anchors[ai];
+      var a=g.anchors[ai],direct=tx(a),dps=pairs(direct);
+      // Current Fallcent cards are fcnt.link anchors whose own text already contains
+      // delivery badge + title + price + drop percentage. Prefer this tight boundary.
+      if(direct.length>=8&&direct.length<=1400&&ROCKET.test(direct)&&dps.length===1){
+        best=a;bestText=direct;break;
+      }
+      var el=a;
       for(var lv=0;lv<10&&el;lv++,el=el.parentElement){
         var t=tx(el);if(t.length<8)continue;if(t.length>1400)break;
         if(!ROCKET.test(t))continue;
