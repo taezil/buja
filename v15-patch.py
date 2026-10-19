@@ -445,7 +445,7 @@ x=x.replace(target,'''@Override public void doUpdateVisitedHistory(android.webki
 # Stronger DOM: capture fcnt/adjoin/coupang and click CTA if href is generated only by click.
 old="(function(){var aa=[].slice.call(document.querySelectorAll('a[href]'));var a=aa.find(function(e){var h=e.href||'';var t=(e.innerText||'').replace(/\\s+/g,' ');return /쿠팡\\s*바로가기|쿠팡.*구매|구매하러/.test(t)||h.indexOf('api.ootoo.co.kr/cou/land.php')>=0||h.indexOf('api.adjoin.co.kr/cou/land.php')>=0||h.indexOf('fcnt.link/')>=0||h.indexOf('link.coupang.com')>=0;});return a?a.href:'';})()"
 new="(function(){var aa=[].slice.call(document.querySelectorAll('a[href]'));var a=aa.find(function(e){var h=e.href||'';var t=(e.innerText||'').replace(/\\s+/g,' ');return /쿠팡\\s*바로가기|쿠팡.*구매|구매하러|최저가/.test(t)||h.indexOf('api.ootoo.co.kr/cou/land.php')>=0||h.indexOf('api.adjoin.co.kr/cou/land.php')>=0||h.indexOf('fcnt.link/')>=0||h.indexOf('link.coupang.com')>=0;});if(a){var h=a.href||'';if(h)return h;a.click();}var b=[].slice.call(document.querySelectorAll('button,[role=button]')).find(function(e){return /쿠팡|바로가기|구매|최저가/.test((e.innerText||'')+(e.getAttribute('aria-label')||''));});if(b)b.click();return '';})()"
-if old not in x: raise SystemExit("V33_JS_TARGET_MISSING")
+if old not in x: old=new
 x=x.replace(old,new,1)
 p.write_text(x)
 checks=["setSupportMultipleWindows(true)","setAcceptThirdPartyCookies(w,true)","root.addView(w,hiddenLp)","shouldInterceptRequest","/쿠팡|바로가기|구매|최저가/"]
