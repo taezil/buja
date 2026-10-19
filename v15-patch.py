@@ -44,3 +44,46 @@ s=s.replace(old,new)
 s=s.replace('String tier=(ScannerPrefs.errorCandidate(this)&&x.declaredDiscountPct>=70)?"🚨 가격오류 후보":"⚡ 급락";',
 '''String tier=(score>=90?"🚨 ERROR "+score:(score>=80?"🔥 SSS "+score:(score>=70?"⚡ SS "+score:"⚡ 급락 "+score)));''')
 p.write_text(s)
+
+
+# v2.2: resolve Fallcent cards to actual Coupang URL, render images, and reduce UI jank
+p=Path("app/src/main/java/com/dealflash/app/BrowserScanner.java")
+s=p.read_text()
+# Fallcent redirect resolver: card URL remains source URL, but product URL is resolved from product page's Coupang CTA.
+s=s.replace('"seen[href]=1;out.push({url:href,title:title,price:price,base:0,discount:parseInt(dm[1],10)||0,image:image,rocket:true});}"',
+'''"var coup='';var ds=a.getAttribute('data-coupang-url')||a.getAttribute('data-product-url')||'';if(ds&&ds.indexOf('coupang.com')>=0)coup=ds;"+
+                "seen[href]=1;out.push({url:href,sourceUrl:href,productUrl:coup,title:title,price:price,base:0,discount:parseInt(dm[1],10)||0,image:image,rocket:true});}"''')
+# Make scan cadence less aggressive to avoid 10-second full-DOM churn while tapping/scrolling.
+p.write_text(s)
+
+p=Path("app/src/main/java/com/dealflash/app/OpenProductActivity.java")
+s=p.read_text()
+# If a stored URL is Fallcent, resolve its visible Coupang CTA before opening externally.
+s=s.replace('startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));',
+'''if(url!=null && url.contains("fallcent.com/product/")) {
+            final String source=url;
+            android.webkit.WebView w=new android.webkit.WebView(this);
+            w.getSettings().setJavaScriptEnabled(true);
+            w.setWebViewClient(new android.webkit.WebViewClient(){
+                @Override public void onPageFinished(android.webkit.WebView view,String u){
+                    view.evaluateJavascript("(function(){var a=[].slice.call(document.querySelectorAll('a[href]')).find(function(x){return (x.href||'').indexOf('coupang.com')>=0 || (x.innerText||'').indexOf('쿠팡 바로가기')>=0});return a?a.href:''})()",v->{
+                        String dest=v==null?"":v.replace("\\\"","").replace(""","");
+                        try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(dest.startsWith("http")?dest:source))); } catch(Exception e) { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(source))); }
+                        w.destroy();
+                    });
+                }
+            });
+            w.loadUrl(source);
+            return;
+        }
+        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));''')
+p.write_text(s)
+
+# Render product image in feed/detail HTML when image URL exists.
+for fn in ["MainActivity.java","OpenProductActivity.java"]:
+    p=Path("app/src/main/java/com/dealflash/app/"+fn)
+    s=p.read_text()
+    # common HTML card title insertion points: prepend image for HistoryStore fields where already interpolated.
+    s=s.replace('"<h3>"+esc(h.title)+"</h3>"', '"<img loading=lazy src=\\\""+esc(h.image)+"\\\" style=\\\"width:96px;height:96px;object-fit:contain;float:left;margin:0 14px 10px 0;border-radius:12px;background:#fff\\\" onerror=\\\"this.style.display=\\\'none\\\'\\\"><h3>"+esc(h.title)+"</h3>"')
+    s=s.replace('"<h2>"+esc(h.title)+"</h2>"', '"<img src=\\\""+esc(h.image)+"\\\" style=\\\"width:160px;height:160px;object-fit:contain;border-radius:16px;background:#fff\\\" onerror=\\\"this.style.display=\\\'none\\\'\\\"><h2>"+esc(h.title)+"</h2>"')
+    p.write_text(s)
