@@ -883,3 +883,29 @@ x=x.replace(needle,repl,1)
 p.write_text(x)
 if "DIRECT_ERR" not in x or "return 'OPEN:'+h;" not in x: raise SystemExit("V46_VERIFY_FAILED")
 print("V46_SIMPLE_DIRECT_CTA_OPEN_OK")
+
+
+# v4.7: replace the CTA polling callback itself. evaluateJavascript returns JSON-quoted strings,
+# so decode the result in Java and open the extracted fcnt href directly; never feed it to follow().
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+# v4.6's OPEN: prefix is unnecessary; return the href itself.
+x=x.replace("""if(h)return 'OPEN:'+h;""","""if(h)return h;""")
+
+# Locate the polling statement (not the earlier diagnostic probe).
+start=x.find("poll[0]=()->")
+if start<0: raise SystemExit("V47_POLL_MISSING")
+ev=x.find("v.evaluateJavascript(",start)
+if ev<0: raise SystemExit("V47_POLL_EVAL_MISSING")
+end=x.find("});",ev)
+if end<0: raise SystemExit("V47_POLL_CALLBACK_END_MISSING")
+seg=x[ev:end+3]
+# Keep the JS expression through the callback comma, replace callback wholesale.
+comma=seg.rfind('''",''')
+if comma<0: raise SystemExit("V47_CALLBACK_COMMA_MISSING")
+head=seg[:comma+2]
+callback='''raw->{try{if(raw!=null&&!raw.equals("null")&&raw.length()>2){String u=raw;if(u.startsWith("\\\"")&&u.endsWith("\\\""))u=u.substring(1,u.length()-1);u=u.replace("\\\\/","/").replace("\\\\u0026","&");android.net.Uri du=android.net.Uri.parse(u);String dh=du.getHost()==null?"":du.getHost().toLowerCase(java.util.Locale.ROOT);if(dh.equals("fcnt.link")||dh.endsWith(".fcnt.link")){done[0]=true;log("CTA_DIRECT "+u);final android.net.Uri fu=du;a.runOnUiThread(()->{try{a.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,fu));}catch(Exception e){log("CTA_DIRECT_ERR "+e.getClass().getSimpleName());}});return;}}}catch(Exception e){log("CTA_PARSE_ERR "+e.getClass().getSimpleName());}if(!done[0]&&++tries[0]<24)v.postDelayed(poll[0],500);});'''
+x=x[:ev]+head+callback+x[end+3:]
+p.write_text(x)
+if "CTA_DIRECT " not in x or "raw->" not in x: raise SystemExit("V47_VERIFY_FAILED")
+print("V47_CTA_CALLBACK_REPLACED_OK")
