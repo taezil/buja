@@ -194,3 +194,17 @@ x=x[:insert]+detail+x[insert:]
 p.write_text(x)
 if 'showPopularDetail(x)' not in x or 'String iu=d.imageUrl' not in x: raise SystemExit("V25_UI_VERIFY_FAILED")
 print("V25_UI_OK")
+
+
+# v2.5 Fallcent resolver: resolve Coupang in an internal WebView; never fall back by opening Fallcent
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+a=x.index(' static void resolveFallcent(Context c,String u){')
+b=x.index(' static void openCoupang(',a)
+resolver=''' static void resolveFallcent(Context c,String u){if(!(c instanceof android.app.Activity)){Toast.makeText(c,"쿠팡 링크 확인 실패",Toast.LENGTH_SHORT).show();return;}android.app.Activity a=(android.app.Activity)c;a.runOnUiThread(()->{Toast.makeText(c,"쿠팡 상품으로 연결 중…",Toast.LENGTH_SHORT).show();final android.webkit.WebView w=new android.webkit.WebView(c);w.getSettings().setJavaScriptEnabled(true);w.getSettings().setDomStorageEnabled(true);final boolean[] done={false};w.setWebViewClient(new android.webkit.WebViewClient(){void go(String z){if(done[0]||z==null)return;if(z.contains("coupang.com")){done[0]=true;w.stopLoading();w.destroy();openCoupang(c,z);}}@Override public boolean shouldOverrideUrlLoading(android.webkit.WebView v,String z){go(z);return done[0];}@Override public void onPageFinished(android.webkit.WebView v,String z){go(z);if(done[0])return;v.evaluateJavascript("(function(){var a=[].slice.call(document.querySelectorAll('a[href]')).find(function(x){return (x.href||'').indexOf('coupang.com')>=0});if(a)return a.href;var b=[].slice.call(document.querySelectorAll('a,button')).find(function(x){return /쿠팡.*바로가기|쿠팡.*상품|구매하러/i.test(x.innerText||'')});if(b){if(b.href)return b.href;b.click();}return '';})()",q->{if(q!=null){String z=q.replace("\\\\u0026","&").replace("\\\\"","").replace("\\"","");go(z);}});}});w.loadUrl(u);new Handler(Looper.getMainLooper()).postDelayed(()->{if(!done[0]){done[0]=true;try{w.destroy();}catch(Exception ignored){}Toast.makeText(c,"쿠팡 링크 추출 실패",Toast.LENGTH_LONG).show();}},8000);});}
+'''
+x=x[:a]+resolver+x[b:]
+p.write_text(x)
+if 'final android.webkit.WebView w=' not in x: raise SystemExit("COUPANG_RESOLVER_VERIFY_FAILED")
+if 'web(c,u);' in x[x.index(' static void resolveFallcent'):x.index(' static void openCoupang')]: raise SystemExit("FALLCENT_FALLBACK_STILL_PRESENT")
+print("V25_COUPANG_RESOLVER_OK")
