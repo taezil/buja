@@ -142,3 +142,16 @@ p=Path("app/src/main/java/com/dealflash/app/MainActivity.java")
 x=p.read_text()
 x=x.replace('esc(h.title)', '((h.image!=null&&!h.image.isEmpty())?"<img src=\\\""+esc(h.image)+"\\\" style=\\\"width:104px;height:104px;object-fit:contain;float:left;margin:0 14px 10px 0;border-radius:12px;background:white\\\" onerror=\\\"this.style.display=\\\'none\\\'\\\">":"")+esc(h.title)', 1)
 p.write_text(x)
+
+
+# v2.3 verified patch guard: fail build when UI/link patches did not actually land
+targets=[
+ ("app/src/main/java/com/dealflash/app/MainActivity.java","<img src=\\\""),
+ ("app/src/main/java/com/dealflash/app/OpenProductActivity.java","coupang.com"),
+ ("app/src/main/java/com/dealflash/app/BrowserScanner.java","data-lazy-src")
+]
+for fn,needle in targets:
+    body=Path(fn).read_text()
+    if needle not in body:
+        raise SystemExit("PATCH_VERIFY_FAILED: "+fn+" missing "+needle)
+print("PATCH_VERIFY_OK: image UI + Coupang resolver + lazy image parser")
