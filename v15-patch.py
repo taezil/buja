@@ -866,3 +866,20 @@ x=x.replace(needle,"""if(h){a.click();return '';}""",1)
 p.write_text(x)
 if """a.click();return '';""" not in x: raise SystemExit("V45_VERIFY_FAILED")
 print("V45_DIRECT_CTA_CLICK_OK")
+
+
+# v4.6: return CTA href to Java, then open that exact URL directly. No synthetic click.
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+old="""if(h){a.click();return '';}"""
+if old not in x: raise SystemExit("V46_CLICK_TARGET_MISSING")
+x=x.replace(old,"""if(h)return 'OPEN:'+h;""",1)
+# Existing CTA callback passes nonempty result to r.follow(...). Convert OPEN: result into a
+# direct browser launch inside R.follow before normalization/bridge logic.
+needle='''void follow(String z){if(done[0]||z==null||z.isEmpty())return;log("SEEN "+z);'''
+if needle not in x: raise SystemExit("V46_FOLLOW_ENTRY_MISSING")
+repl='''void follow(String z){if(done[0]||z==null||z.isEmpty())return;if(z.startsWith("OPEN:")){String u=z.substring(5);log("DIRECT "+u);done[0]=true;final android.net.Uri du=android.net.Uri.parse(u);a.runOnUiThread(()->{try{a.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,du));}catch(Exception e){log("DIRECT_ERR "+e.getClass().getSimpleName());}});return;}log("SEEN "+z);'''
+x=x.replace(needle,repl,1)
+p.write_text(x)
+if "DIRECT_ERR" not in x or "return 'OPEN:'+h;" not in x: raise SystemExit("V46_VERIFY_FAILED")
+print("V46_SIMPLE_DIRECT_CTA_OPEN_OK")
