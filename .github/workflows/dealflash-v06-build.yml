@@ -45,8 +45,8 @@ jobs:
           for x in ok[:3]: print('SAMPLE',x)
           print('NOTE server-side curl may be blocked; Android uses WebView DOM parser')
           PY
-          grep -RIl 'V1.2' app/src/main | xargs -r sed -i 's/V1\.2/V2.0/g'
-          grep -RIl 'v1.2' app/src/main | xargs -r sed -i 's/v1\.2/v2.0/g'
+          grep -RIl 'V1.2' app/src/main | xargs -r sed -i 's/V1\.2/V2.1/g'
+          grep -RIl 'v1.2' app/src/main | xargs -r sed -i 's/v1\.2/v2.1/g'
           sed -i "s/versionCode 12/versionCode 21/; s/versionName '1.2.0'/versionName '2.1.0'/" app/build.gradle
       - name: Build debug APK
         working-directory: buildsrc
