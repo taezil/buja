@@ -1228,3 +1228,11 @@ elif "ServerSync.restoreDeals(this);" not in x:
  raise SystemExit("V54_ONCREATE_TARGET_MISSING")
 p.write_text(x)
 print("V54_SERVER_RESTORE_OK")
+
+
+# v5.4b compile fix: ServerSync uses fully-qualified Android Context.
+p=Path("app/src/main/java/com/dealflash/app/ServerSync.java")
+x=p.read_text().replace("restoreDeals(Context c)","restoreDeals(android.content.Context c)")
+p.write_text(x)
+if "restoreDeals(android.content.Context c)" not in x: raise SystemExit("V54B_CONTEXT_FIX_FAILED")
+print("V54B_CONTEXT_FIX_OK")
