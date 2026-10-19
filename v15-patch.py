@@ -87,3 +87,58 @@ for fn in ["MainActivity.java","OpenProductActivity.java"]:
     s=s.replace('"<h3>"+esc(h.title)+"</h3>"', '"<img loading=lazy src=\\\""+esc(h.image)+"\\\" style=\\\"width:96px;height:96px;object-fit:contain;float:left;margin:0 14px 10px 0;border-radius:12px;background:#fff\\\" onerror=\\\"this.style.display=\\\'none\\\'\\\"><h3>"+esc(h.title)+"</h3>"')
     s=s.replace('"<h2>"+esc(h.title)+"</h2>"', '"<img src=\\\""+esc(h.image)+"\\\" style=\\\"width:160px;height:160px;object-fit:contain;border-radius:16px;background:#fff\\\" onerror=\\\"this.style.display=\\\'none\\\'\\\"><h2>"+esc(h.title)+"</h2>"')
     p.write_text(s)
+
+
+# v2.3 hard fix: image fallback from card CSS/background and non-blocking direct Coupang navigation
+p=Path("app/src/main/java/com/dealflash/app/BrowserScanner.java")
+x=p.read_text()
+x=x.replace("if(image.indexOf('//')===0)image='https:'+image;", "if(!image&&root){var bg=getComputedStyle(root).backgroundImage||'';var bm=bg.match(/url\\([\\\"']?([^\\\"')]+)[\\\"']?\\)/);if(bm)image=bm[1];}if(image.indexOf('//')===0)image='https:'+image;")
+p.write_text(x)
+
+# The previous resolver created a foreground WebView on every click, causing visible jank.
+# Replace with browser-side direct redirect handling: open Fallcent page only as a resolver,
+# intercept the first Coupang navigation and immediately hand it to Android.
+p=Path("app/src/main/java/com/dealflash/app/OpenProductActivity.java")
+x=p.read_text()
+start=x.find('if(url!=null && url.contains("fallcent.com/product/")) {')
+if start>=0:
+    end=x.find('        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));', start)
+    if end>=0:
+        old=x[start:end]
+        new='''if(url!=null && url.contains("fallcent.com/product/")) {
+            android.webkit.WebView w=new android.webkit.WebView(getApplicationContext());
+            w.getSettings().setJavaScriptEnabled(true);
+            w.getSettings().setDomStorageEnabled(false);
+            w.setWebViewClient(new android.webkit.WebViewClient(){
+                boolean sent=false;
+                private boolean send(String u){
+                    if(sent||u==null) return false;
+                    String z=u.toLowerCase();
+                    if(z.contains("coupang.com") || z.startsWith("coupang://")) {
+                        sent=true;
+                        try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(u))); } catch(Exception ignored) {}
+                        w.postDelayed(()->w.destroy(),250);
+                        return true;
+                    }
+                    return false;
+                }
+                @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView v,String u){ return send(u); }
+                @Override public void onPageFinished(android.webkit.WebView v,String u){
+                    v.evaluateJavascript("(function(){var aa=[].slice.call(document.querySelectorAll('a[href]'));var a=aa.find(function(q){var h=q.href||'';var t=q.innerText||'';return h.indexOf('coupang.com')>=0||t.indexOf('쿠팡 바로가기')>=0||t.indexOf('쿠팡에서')>=0});return a?a.href:''})()", q->{
+                        String d=q==null?"":q.replace("\\\"","").replace(""","");
+                        if(d.startsWith("http")) send(d);
+                    });
+                }
+            });
+            w.loadUrl(url);
+            return;
+        }
+        '''
+        x=x[:start]+new+x[end:]
+p.write_text(x)
+
+# Feed HTML: inject an image block by title even if older exact template differed.
+p=Path("app/src/main/java/com/dealflash/app/MainActivity.java")
+x=p.read_text()
+x=x.replace('esc(h.title)', '((h.image!=null&&!h.image.isEmpty())?"<img src=\\\""+esc(h.image)+"\\\" style=\\\"width:104px;height:104px;object-fit:contain;float:left;margin:0 14px 10px 0;border-radius:12px;background:white\\\" onerror=\\\"this.style.display=\\\'none\\\'\\\">":"")+esc(h.title)', 1)
+p.write_text(x)
