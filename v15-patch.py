@@ -723,3 +723,18 @@ p.write_text(x)
 for z in ['BRIDGE "+q','data-href','폴센트의 쿠팡 바로가기 주소']:
     if z not in x: raise SystemExit("V40_VERIFY_FAILED "+z)
 print("V40_FALLCENT_CTA_EXTRACTION_OK")
+
+
+# v4.1 CTA extraction: Fallcent bottom CTA may be a non-anchor div with onclick; search all elements,
+# climb to clickable ancestor, read common URL attributes, then dispatch a real click.
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+old='''var b=[].slice.call(document.querySelectorAll('a,button,[role=button]')).find(function(e){return /쿠팡\\\\s*바로가기/.test((e.innerText||'').replace(/\\\\s+/g,' '));});if(b){var h=b.href||b.getAttribute('href')||b.getAttribute('data-href')||b.getAttribute('data-url')||'';if(h)return h;b.click();}return '';'''
+new='''var all=[].slice.call(document.querySelectorAll('body *'));var b=all.find(function(e){var t=(e.innerText||e.textContent||'').replace(/\\\\s+/g,' ').trim();return t==='쿠팡 바로가기'||(/^쿠팡 바로가기/.test(t)&&t.length<40);});if(b){var n=b;for(var i=0;i<6&&n;i++,n=n.parentElement){var h=n.href||n.getAttribute('href')||n.getAttribute('data-href')||n.getAttribute('data-url')||n.getAttribute('data-link')||'';if(h)return h;var oc=n.getAttribute('onclick')||'';var m=oc.match(/https?:[^'\"\\\\s)]+/);if(m)return m[0];if(n.tagName==='A'||n.tagName==='BUTTON'||n.getAttribute('role')==='button'||oc){n.click();return '';}}b.click();}return '';'''
+if old not in x: raise SystemExit("V41_CTA_TARGET_MISSING")
+x=x.replace(old,new,1)
+p.write_text(x)
+for z in ["querySelectorAll('body *')","data-link","onclick","V41"]:
+    if z=="V41": continue
+    if z not in x: raise SystemExit("V41_VERIFY_FAILED "+z)
+print("V41_FALLCENT_CTA_DEEP_CLICK_OK")
