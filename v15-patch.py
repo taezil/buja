@@ -738,3 +738,14 @@ for z in ["querySelectorAll('body *')","data-link","onclick","V41"]:
     if z=="V41": continue
     if z not in x: raise SystemExit("V41_VERIFY_FAILED "+z)
 print("V41_FALLCENT_CTA_DEEP_CLICK_OK")
+
+
+# v4.1b compile fix: avoid quote-heavy onclick URL regex inside Java string.
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+bad="""var oc=n.getAttribute('onclick')||'';var m=oc.match(/https?:[^'\\\"\\\\s)]+/);if(m)return m[0];"""
+good="""var oc=n.getAttribute('onclick')||'';var k=oc.indexOf('http');if(k>=0){var e=oc.indexOf(')',k);var h2=oc.substring(k,e>k?e:oc.length).replace(/['\\\\\\\"]/g,'');if(h2)return h2;}"""
+if bad not in x: raise SystemExit("V41B_TARGET_MISSING")
+x=x.replace(bad,good,1)
+p.write_text(x)
+print("V41B_COMPILE_ESCAPE_FIX_OK")
