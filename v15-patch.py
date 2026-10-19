@@ -492,7 +492,7 @@ replacement='''            }).start();
     });'''
 x=x.replace(needle,replacement,1)
 p.write_text(x)
-print("V34_BASE_NORMALIZATION_OK")\n\n
+print("V34_BASE_NORMALIZATION_OK")
 
 
 # v3.5 replace resolver atomically: SPA polling + bridge redirects + strict host + intent handling
