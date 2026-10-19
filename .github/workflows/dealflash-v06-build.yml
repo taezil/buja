@@ -20,7 +20,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.10.2"
-      - name: Restore and patch v2.0 source
+      - name: Restore and patch v2.1 source
         run: |
           mkdir buildsrc
           cd buildsrc
