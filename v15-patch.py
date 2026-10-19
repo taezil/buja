@@ -554,3 +554,60 @@ p.write_text(x)
 for z in ["tries[0]++>=24","FC_TRACE","onReceivedHttpError","getHost()","ii.getData()","HTTP_ERR"]:
     if z not in x: raise SystemExit("V35_VERIFY_FAILED "+z)
 print("V35_RESOLVER_DIAGNOSTIC_POLLING_OK")
+
+
+# v3.6 fix product identity/image binding and make diagnostics concise/actionable
+p=Path("app/src/main/java/com/dealflash/app/BrowserScanner.java")
+x=p.read_text()
+# Replace Fallcent listing parser atomically so title, price, image and href come from one nearest card.
+a=x.index('    private static String fallcentListingScript() {')
+b=x.index('    private static String detailScript() {',a)
+method=r'''    private static String fallcentListingScript() {
+        return "(function(){"+
+        "var blocked=/access denied|captcha|비정상적인 접근/i.test(document.body?document.body.innerText:'');"+
+        "var links=[].slice.call(document.querySelectorAll('a[href*=\\\"/product/\\\"]'));var out=[],seen={};"+
+        "for(var i=0;i<links.length&&out.length<220;i++){var a=links[i],href=a.href||'';if(!href||seen[href])continue;"+
+        "var card=a.closest('article,li,[class*=product],[class*=item],[class*=card]');if(!card){var p=a;for(var k=0;k<5&&p;k++,p=p.parentElement){var tx=(p.innerText||'');if(/[0-9][0-9,]{2,}\\s*원/.test(tx)&&/(?:▼|↓)\\s*[0-9]{1,3}\\s*%/.test(tx)){card=p;break;}}}if(!card)continue;"+
+        "var t=(card.innerText||card.textContent||'').replace(/\\s+/g,' ').trim();if(!/(로켓배송|로켓직구|판매자로켓)/.test(t)||t.indexOf('판매자배송')>=0)continue;"+
+        "var dm=t.match(/(?:▼|↓)\\s*([0-9]{1,3})\\s*%/);if(!dm)continue;var ps=[],m,re=/([0-9][0-9,]{2,})\\s*원/g;while((m=re.exec(t))!==null){var pv=parseInt(m[1].replace(/,/g,''),10);if(pv>=100)ps.push(pv);}if(!ps.length)continue;"+
+        "var title='';var te=card.querySelector('[class*=title],[class*=name],h1,h2,h3,h4,strong');if(te)title=(te.innerText||te.textContent||'').trim();if(!title){title=(a.innerText||a.textContent||'').trim();}if(!title||title.length<3)title=t.replace(/역대급|타이밍|로켓배송|로켓직구|판매자로켓/g,' ').replace(/[0-9][0-9,]*\\s*원.*$/,'').trim();"+
+        "var im=card.querySelector('img');var image='';if(im){image=im.currentSrc||im.getAttribute('src')||im.getAttribute('data-src')||im.getAttribute('data-original')||im.getAttribute('data-lazy-src')||'';var ss=im.getAttribute('srcset')||im.getAttribute('data-srcset')||'';if(!image&&ss)image=ss.split(',')[0].trim().split(' ')[0];if(image.indexOf('//')===0)image='https:'+image;}"+
+        "seen[href]=1;out.push({url:href,title:title,price:Math.min.apply(null,ps),base:0,discount:parseInt(dm[1],10)||0,image:image,rocket:true});}"+
+        "return JSON.stringify({url:location.href,title:document.title||'',blocked:blocked,blockReason:blocked?'접근 제한':'',links:links.length,items:out});"+
+        "})()";
+    }
+
+'''
+x=x[:a]+method+x[b:]
+p.write_text(x)
+
+# Prevent stale/wrong HistoryStore image from overriding a newly parsed card image.
+p=Path("app/src/main/java/com/dealflash/app/HotDealStore.java")
+x=p.read_text()
+old='if(hi!=null&&hi.imageUrl!=null)found.imageUrl=hi.imageUrl;save(c,a);'
+if old in x:x=x.replace(old,'if((found.imageUrl==null||found.imageUrl.isEmpty())&&hi!=null&&hi.imageUrl!=null)found.imageUrl=hi.imageUrl;save(c,a);',1)
+p.write_text(x)
+
+# Detail UI must not claim Coupang/detail verification when this item was only detected from Fallcent.
+p=Path("app/src/main/java/com/dealflash/app/MainActivity.java")
+x=p.read_text()
+x=x.replace('badges.addView(pill("  ✓ 검증완료",0xFF16A34A));','badges.addView(pill("  폴센트 감지",0xFF16A34A));')
+x=x.replace('verify.addView(t("✓ 상세페이지 재검증 완료",16,true));','verify.addView(t("폴센트 가격 감지",16,true));')
+x=x.replace('verify.addView(t("발견 "+date(d.foundAt)+"\\n마지막 검증 "+date(d.lastVerifiedAt),13,false));','verify.addView(t("발견 "+date(d.foundAt)+"\\n마지막 감지 "+date(d.lastVerifiedAt),13,false));')
+p.write_text(x)
+
+# Make trace bounded: keep only useful transition/error lines, not repeated SEEN spam.
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+old='void log(String m){android.util.Log.d("FC_TRACE",m);trace.append("\\n").append(m);}'
+new='void log(String m){android.util.Log.d("FC_TRACE",m);if(m.startsWith("SEEN ")&&trace.indexOf(m)>=0)return;if(trace.length()<5000)trace.append("\\n").append(m);}'
+if old not in x: raise SystemExit("V36_TRACE_TARGET_MISSING")
+x=x.replace(old,new,1)
+p.write_text(x)
+
+for fp,z in [
+ ("app/src/main/java/com/dealflash/app/BrowserScanner.java","a.closest('article,li,[class*=product],[class*=item],[class*=card]')"),
+ ("app/src/main/java/com/dealflash/app/MainActivity.java","폴센트 가격 감지"),
+ ("app/src/main/java/com/dealflash/app/AppLauncher.java","trace.length()<5000")]:
+    if z not in Path(fp).read_text(): raise SystemExit("V36_VERIFY_FAILED "+z)
+print("V36_PRODUCT_BINDING_UI_TRACE_OK")
