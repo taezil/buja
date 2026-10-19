@@ -146,3 +146,23 @@ p.write_text(x)
 
 # diagnostics mode: actual patched source is printed by workflow; verification follows after exact patching
 print("PATCH_STAGE_COMPLETE")
+
+
+# v2.4 exact patch against observed generated MainActivity
+p=Path("app/src/main/java/com/dealflash/app/MainActivity.java")
+x=p.read_text()
+old='void hotCard(HotDealStore.Hot d){LinearLayout c=card();LinearLayout top='
+if old not in x: raise SystemExit("HOTCARD_TARGET_MISSING")
+new='void hotCard(HotDealStore.Hot d){LinearLayout c=card();HistoryStore.H hh=HistoryStore.load(this).get(d.key);if(hh!=null&&hh.imageUrl!=null&&!hh.imageUrl.isEmpty()){ImageView pic=new ImageView(this);pic.setScaleType(ImageView.ScaleType.CENTER_CROP);c.addView(pic,new LinearLayout.LayoutParams(-1,dp(180)));loadImage(pic,hh.imageUrl);}LinearLayout top='
+x=x.replace(old,new,1)
+old='open.setOnClickListener(v->AppLauncher.openUrl(this,fd.url));'
+if old not in x: raise SystemExit("HOTDETAIL_LINK_TARGET_MISSING")
+new='open.setOnClickListener(v->{HistoryStore.H hh=HistoryStore.load(this).get(fd.key);AppLauncher.openProduct(this,"FALLCENT",hh!=null?hh.url:fd.url);});'
+x=x.replace(old,new,1)
+p.write_text(x)
+
+# verify exact observed modifications
+x=p.read_text()
+if 'ImageView pic=new ImageView(this)' not in x: raise SystemExit("HOT_IMAGE_PATCH_FAILED")
+if 'AppLauncher.openProduct(this,"FALLCENT"' not in x: raise SystemExit("HOT_LINK_PATCH_FAILED")
+print("EXACT_UI_PATCH_OK")
