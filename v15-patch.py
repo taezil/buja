@@ -643,3 +643,38 @@ print("V37_FALLCENT_SCAN_RECOVERY_OK")
 # v3.8 diagnosis only: device trace proves fcnt.link is returning HTTP 403.
 # Do not alter the working resolver here until a browser/Custom Tab return path is implemented safely.
 print("V38_FCNT_403_DIAGNOSED")
+
+
+# v3.9 fcnt.link direct browser handoff: do not retry Cloudflare-blocked bridge in hidden WebView
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+a=x.index(' static void resolveFallcent(Context c,String u){')
+b=x.index(' static void openCoupang(',a)
+old=x[a:b]
+# Keep Fallcent-page resolver, but once the app already owns an fcnt.link URL,
+# hand the exact original URL to Android under the user's click instead of WebView/HttpURLConnection.
+needle=''' static void resolveFallcent(Context c,String u){
+  if(!(c instanceof android.app.Activity)){Toast.makeText(c,"쿠팡 링크 확인 실패",Toast.LENGTH_SHORT).show();return;}'''
+replacement=''' static void resolveFallcent(Context c,String u){
+  try{
+    android.net.Uri input=android.net.Uri.parse(u);
+    String ih=input.getHost();
+    if(ih!=null&&ih.equalsIgnoreCase("fcnt.link")){
+      android.content.Intent out=new android.content.Intent(android.content.Intent.ACTION_VIEW,input);
+      out.addCategory(android.content.Intent.CATEGORY_BROWSABLE);
+      c.startActivity(out);
+      return;
+    }
+  }catch(Exception e){Toast.makeText(c,"링크를 열 수 없습니다",Toast.LENGTH_SHORT).show();return;}
+  if(!(c instanceof android.app.Activity)){Toast.makeText(c,"쿠팡 링크 확인 실패",Toast.LENGTH_SHORT).show();return;}'''
+if needle not in x: raise SystemExit("V39_ENTRY_TARGET_MISSING")
+x=x.replace(needle,replacement,1)
+# When a Fallcent page yields fcnt.link, immediately browser-handoff the exact bridge URL.
+needle='''void follow(String z){if(done[0]||z==null||z.isEmpty())return;log("SEEN "+z);String q=norm(z);if(coup(q)){finish(q);return;}if(bridge(q)){final String first=q;'''
+replacement='''void follow(String z){if(done[0]||z==null||z.isEmpty())return;log("SEEN "+z);String q=norm(z);if(coup(q)){finish(q);return;}try{String bh=android.net.Uri.parse(q).getHost();if(bh!=null&&bh.equalsIgnoreCase("fcnt.link")){done[0]=true;log("BROWSER_FCNT "+q);try{w.stopLoading();}catch(Exception ignored){}try{root.removeView(w);}catch(Exception ignored){}try{w.destroy();}catch(Exception ignored){}android.content.Intent out=new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(q));out.addCategory(android.content.Intent.CATEGORY_BROWSABLE);c.startActivity(out);return;}}catch(Exception ignored){}if(bridge(q)){final String first=q;'''
+if needle not in x: raise SystemExit("V39_FOLLOW_TARGET_MISSING")
+x=x.replace(needle,replacement,1)
+p.write_text(x)
+for z in ['equalsIgnoreCase("fcnt.link")','CATEGORY_BROWSABLE','BROWSER_FCNT']:
+    if z not in x: raise SystemExit("V39_VERIFY_FAILED "+z)
+print("V39_FCNT_BROWSER_HANDOFF_OK")
