@@ -33,6 +33,11 @@ jobs:
           grep -n -C 5 "ACTION_VIEW\|fallcent\|coupang" app/src/main/java/com/dealflash/app/OpenProductActivity.java | head -180 || true
           echo "=== PATCHED BrowserScanner image/url ==="
           grep -n -C 3 "data-lazy-src\|out.push\|sourceUrl\|productUrl" app/src/main/java/com/dealflash/app/BrowserScanner.java | head -180 || true
+          echo "=== DATA MODEL / LAUNCHER / DETAIL ==="
+          cat app/src/main/java/com/dealflash/app/HistoryStore.java || true
+          cat app/src/main/java/com/dealflash/app/HotDealStore.java || true
+          cat app/src/main/java/com/dealflash/app/AppLauncher.java || true
+          cat app/src/main/java/com/dealflash/app/OpenProductActivity.java || true
           echo '=== Live Fallcent parser smoke test ==='
           curl -sSL --max-time 15 'https://fallcent.com/product/recommend/?from=gnb' -o /tmp/fallcent.html || true
           python3 - <<'PY'
