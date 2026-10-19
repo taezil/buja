@@ -1,4 +1,4 @@
-name: Build DealFlash v2.0 APK
+name: Build DealFlash v2.1 APK
 on:
   push:
     branches: [dealflash-v06-build]
@@ -47,12 +47,12 @@ jobs:
           PY
           grep -RIl 'V1.2' app/src/main | xargs -r sed -i 's/V1\.2/V2.0/g'
           grep -RIl 'v1.2' app/src/main | xargs -r sed -i 's/v1\.2/v2.0/g'
-          sed -i "s/versionCode 12/versionCode 20/; s/versionName '1.2.0'/versionName '2.0.0'/" app/build.gradle
+          sed -i "s/versionCode 12/versionCode 21/; s/versionName '1.2.0'/versionName '2.1.0'/" app/build.gradle
       - name: Build debug APK
         working-directory: buildsrc
         run: gradle --no-daemon --stacktrace :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.0-debug-apk
+          name: DealFlash-v2.1-debug-apk
           path: buildsrc/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
