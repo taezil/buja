@@ -720,6 +720,6 @@ r=r.replace('new android.app.AlertDialog.Builder(a).setTitle("쿠팡 링크 추�
 
 x=x[:a]+r+x[b:]
 p.write_text(x)
-for z in ['BRIDGE "+q','쿠팡\\\\\\\\s*바로가기','폴센트의 쿠팡 바로가기 주소']:
+for z in ['BRIDGE "+q','data-href','폴센트의 쿠팡 바로가기 주소']:
     if z not in x: raise SystemExit("V40_VERIFY_FAILED "+z)
 print("V40_FALLCENT_CTA_EXTRACTION_OK")
