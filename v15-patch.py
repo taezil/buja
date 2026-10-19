@@ -851,3 +851,23 @@ x=x.replace('''done[0]=true; clean();''','''done[0]=true;''')
 p.write_text(x)
 if 'done[0]=true; clean();' in x: raise SystemExit("V44C_VERIFY_FAILED")
 print("V44C_REMOVE_MISSING_CLEAN_OK")
+
+
+# v4.5: when CTA JS returns an fcnt href, launch it directly on UI thread and terminate resolver.
+# This fixes the observed #124 path where DOM extraction succeeds but follow()/bridge handoff never fires.
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+# In evaluateJavascript callbacks, replace r.follow(u) for a discovered URL with a direct UI ACTION_VIEW
+# when it is fcnt.link; preserve normal follow() for Coupang/other URLs.
+old='''if(u!=null&&!u.isEmpty())r.follow(u);'''
+new='''if(u!=null&&!u.isEmpty()){try{android.net.Uri du=android.net.Uri.parse(u);String dh=du.getHost()==null?"":du.getHost().toLowerCase(java.util.Locale.ROOT);if(dh.equals("fcnt.link")||dh.endsWith(".fcnt.link")){done[0]=true;a.runOnUiThread(()->{try{a.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,du));}catch(Exception e){r.log("CTA_BROWSER_ERR "+e.getClass().getSimpleName());}});return;} }catch(Exception ignore){}r.follow(u);}'''
+if old not in x:
+    # generated source may use a different receiver or whitespace; target the callback's stable follow call.
+    old='''r.follow(u);'''
+    if old not in x: raise SystemExit("V45_FOLLOW_CALLBACK_MISSING")
+    x=x.replace(old,new.replace('''if(u!=null&&!u.isEmpty())''','''if(u!=null&&!u.isEmpty())'''),1)
+else:
+    x=x.replace(old,new,1)
+p.write_text(x)
+if 'CTA_BROWSER_ERR' not in x or 'done[0]=true;a.runOnUiThread' not in x: raise SystemExit("V45_VERIFY_FAILED")
+print("V45_DIRECT_CTA_UI_HANDOFF_OK")
