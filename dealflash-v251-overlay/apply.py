@@ -8,14 +8,14 @@ def replace(path, old, new):
     p.write_text(s.replace(old, new))
 
 # Version / preview package metadata.
-replace("app/build.gradle", "versionCode 25\n        versionName '2.5.0'", "versionCode 26\n        versionName '2.5.1'")
+replace("app/build.gradle", "versionCode 25\n        versionName '2.5.0'", "versionCode 27\n        versionName '2.5.2'")
 replace("build-apk.sh",
         "r.set(ns+'versionCode','25');r.set(ns+'versionName','2.5.0-preview' if sys.argv[1]=='preview' else '2.5.0')",
-        "r.set(ns+'versionCode','26');r.set(ns+'versionName','2.5.1-preview' if sys.argv[1]=='preview' else '2.5.1')")
-replace("build-apk.sh", "DealFlash 2.5 Preview", "DealFlash 2.5.1 Preview")
-replace("build-apk.sh", "DealFlash-v2.5-$MODE.apk", "DealFlash-v2.5.1-$MODE.apk")
+        "r.set(ns+'versionCode','26');r.set(ns+'versionName','2.5.2-preview' if sys.argv[1]=='preview' else '2.5.2')")
+replace("build-apk.sh", "DealFlash 2.5 Preview", "DealFlash 2.5.2 Preview")
+replace("build-apk.sh", "DealFlash-v2.5-$MODE.apk", "DealFlash-v2.5.2-$MODE.apk")
 replace("app/src/main/java/com/dealflash/app/NotificationHelper.java",
-        "DealFlash V2.5 · 가격 감시 중", "DealFlash V2.5.1 · 가격 감시 중")
+        "DealFlash V2.5 · 가격 감시 중", "DealFlash V2.5.2 · 가격 감시 중")
 
 # Fallcent URL identity: accept detail paths that are not the old one-segment shape.
 replace("app/src/main/java/com/dealflash/app/ProductUrl.java",
@@ -25,8 +25,7 @@ replace("app/src/main/java/com/dealflash/app/ProductUrl.java",
                 ? "https://fallcent.com/product/" + m.group(1) : null;
         }''',
 '''        if ("FALLCENT".equals(source)) {
-            String path = fallcentProductPath(s);
-            return path == null ? null : "https://fallcent.com/product/" + path;
+            return canonicalFallcent(s);
         }''')
 
 replace("app/src/main/java/com/dealflash/app/ProductUrl.java",
@@ -37,9 +36,17 @@ replace("app/src/main/java/com/dealflash/app/ProductUrl.java",
             return "fc:h:" + sha1Hex(stripQuery(unescape(url.trim())), 12);
         }''',
 '''        if ("FALLCENT".equals(source)) {
-            // Stable identity: preserve the full detail path. Fallcent occasionally changes the
-            // shape of product URLs, so nested detail paths are hashed instead of being rejected.
-            String path = fallcentProductPath(url);
+            String direct = canonicalFallcent(url);
+            if (direct == null) return "";
+            try {
+                URI u = new URI(direct);
+                String host = u.getHost() == null ? "" : u.getHost().toLowerCase(java.util.Locale.ROOT);
+                if ("fcnt.link".equals(host)) {
+                    String token = u.getPath() == null ? "" : u.getPath().replaceAll("^/+|/+$", "");
+                    return token.isEmpty() ? "" : "fc:l:" + sha1Hex(token, 16);
+                }
+            } catch (Exception ignored) {}
+            String path = fallcentProductPath(direct);
             if (path == null) return "";
             if (path.matches("[A-Za-z0-9_-]{6,}")) return "fc:" + path;
             return "fc:p:" + sha1Hex(path, 16);
@@ -47,7 +54,23 @@ replace("app/src/main/java/com/dealflash/app/ProductUrl.java",
 
 replace("app/src/main/java/com/dealflash/app/ProductUrl.java",
 '''    private static String stripQuery(String url) {''',
-'''    private static String fallcentProductPath(String raw) {
+'''    private static String canonicalFallcent(String raw) {
+        if (raw == null) return null;
+        try {
+            URI u = new URI(unescape(raw.trim()));
+            String host = u.getHost();
+            if (host == null) return null;
+            String lower = host.toLowerCase(java.util.Locale.ROOT).replaceFirst("^www\\.", "");
+            if ("fcnt.link".equals(lower)) {
+                String token = u.getPath() == null ? "" : u.getPath().replaceAll("^/+|/+$", "");
+                return token.isEmpty() ? null : "https://fcnt.link/" + token;
+            }
+            String path = fallcentProductPath(raw);
+            return path == null ? null : "https://fallcent.com/product/" + path;
+        } catch (Exception e) { return null; }
+    }
+
+    private static String fallcentProductPath(String raw) {
         if (raw == null) return null;
         try {
             URI u = new URI(unescape(raw.trim()));
