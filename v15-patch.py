@@ -1187,3 +1187,44 @@ x=x.replace('o.put("price",Math.round(x.price));o.put("drop_rate",x.declaredDisc
 p.write_text(x)
 if 'observed_at' not in x: raise SystemExit("V53_SERVERSYNC_VERIFY_FAILED")
 print("V53_DURABLE_HISTORY_PAYLOAD_OK")
+
+
+# v5.4 server restore: hydrate local HistoryStore from durable D1 products on app startup.
+p=Path("app/src/main/java/com/dealflash/app/ServerSync.java")
+x=p.read_text()
+insert=x.rfind("}")
+method=r'''
+ public static void restoreDeals(Context c){
+  new Thread(()->{java.net.HttpURLConnection h=null;try{
+   java.net.URL u=new java.net.URL(BASE+"/api/deals?limit=100");
+   h=(java.net.HttpURLConnection)u.openConnection();h.setConnectTimeout(8000);h.setReadTimeout(8000);h.setRequestMethod("GET");
+   if(h.getResponseCode()/100!=2)return;
+   java.io.BufferedReader br=new java.io.BufferedReader(new java.io.InputStreamReader(h.getInputStream(),"UTF-8"));
+   StringBuilder sb=new StringBuilder();String ln;while((ln=br.readLine())!=null)sb.append(ln);
+   org.json.JSONArray a=new org.json.JSONObject(sb.toString()).optJSONArray("items");if(a==null)return;
+   java.util.LinkedHashMap<String,HistoryStore.H> map=HistoryStore.load(c);
+   for(int i=0;i<a.length();i++){org.json.JSONObject o=a.optJSONObject(i);if(o==null)continue;String k=o.optString("product_key","");if(k.isEmpty())continue;
+    HistoryStore.H z=map.get(k);if(z==null)z=new HistoryStore.H();
+    z.key=k;z.title=o.optString("product_name",z.title);z.url=o.optString("product_url",z.url);z.imageUrl=o.optString("image_url",z.imageUrl);
+    z.last=o.optDouble("current_price",z.last);z.low=o.optDouble("lowest_price",z.low);z.reference=o.optDouble("highest_price",z.reference);
+    z.declaredDiscountPct=o.optInt("last_drop_rate",z.declaredDiscountPct);z.dealScore=o.optInt("deal_score",z.dealScore);
+    map.put(k,z);
+   }
+   HistoryStore.save(c,map);
+  }catch(Exception ignored){}finally{if(h!=null)h.disconnect();}}).start();
+ }
+'''
+x=x[:insert]+method+x[insert:]
+p.write_text(x)
+if "restoreDeals(Context c)" not in x: raise SystemExit("V54_RESTORE_METHOD_FAILED")
+
+p=Path("app/src/main/java/com/dealflash/app/MainActivity.java")
+x=p.read_text()
+# Restore at launch without altering the known-good Coupang resolver.
+needle="super.onCreate(b);"
+if needle in x and "ServerSync.restoreDeals(this);" not in x:
+ x=x.replace(needle,needle+"ServerSync.restoreDeals(this);",1)
+elif "ServerSync.restoreDeals(this);" not in x:
+ raise SystemExit("V54_ONCREATE_TARGET_MISSING")
+p.write_text(x)
+print("V54_SERVER_RESTORE_OK")
