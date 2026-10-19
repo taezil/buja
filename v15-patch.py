@@ -382,3 +382,35 @@ x=x.replace('r.go(dest);\n        });','r.go(dest);if(!done[0]&&r.bridge(dest))v
 p.write_text(x)
 if "api.adjoin.co.kr" not in x or "fcnt.link/" not in x or "v.loadUrl(dest)" not in x: raise SystemExit("V31_REDIRECT_CHAIN_VERIFY_FAILED")
 print("V31_FCNT_ADJOIN_COUPANG_CHAIN_OK")
+
+
+# v3.2 Fallcent's own product page already exposes the exact fcnt.link in the rendered DOM.
+# Previous v3.1 only loaded fcnt.link after JS callback and could lose the redirect before WebView reported it.
+# Resolve fcnt.link by HTTP redirect headers first, then fall back to WebView navigation.
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+needle='r.go(dest);if(!done[0]&&r.bridge(dest))v.loadUrl(dest);'
+if needle not in x: raise SystemExit("V32_CALLBACK_TARGET_MISSING")
+replacement='''r.go(dest);if(!done[0]&&r.bridge(dest)){
+            final String bridgeUrl=dest;
+            new Thread(()->{
+              String cur=bridgeUrl;
+              try{
+                for(int hop=0;hop<6&&!done[0];hop++){
+                  java.net.HttpURLConnection cn=(java.net.HttpURLConnection)new java.net.URL(cur).openConnection();
+                  cn.setInstanceFollowRedirects(false);cn.setConnectTimeout(5000);cn.setReadTimeout(5000);
+                  cn.setRequestProperty("User-Agent","Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36");
+                  int code=cn.getResponseCode();String loc=cn.getHeaderField("Location");cn.disconnect();
+                  if(loc==null||loc.isEmpty())break;
+                  cur=new java.net.URL(new java.net.URL(cur),loc).toString();
+                  final String got=cur;a.runOnUiThread(()->r.go(got));
+                  if(r.coup(cur))break;
+                }
+              }catch(Exception ignored){}
+              a.runOnUiThread(()->{if(!done[0])w.loadUrl(bridgeUrl);});
+            }).start();
+          }'''
+x=x.replace(needle,replacement,1)
+p.write_text(x)
+if "HttpURLConnection" not in x or "setInstanceFollowRedirects(false)" not in x: raise SystemExit("V32_HTTP_REDIRECT_VERIFY_FAILED")
+print("V32_FCNT_HTTP_REDIRECT_RESOLVER_OK")
