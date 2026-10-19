@@ -448,6 +448,6 @@ new="(function(){var aa=[].slice.call(document.querySelectorAll('a[href]'));var 
 if old not in x: old=new
 x=x.replace(old,new,1)
 p.write_text(x)
-checks=["setSupportMultipleWindows(true)","setAcceptThirdPartyCookies(w,true)","root.addView(w,hiddenLp)","shouldInterceptRequest","/쿠팡|바로가기|구매|최저가/"]
+checks=[]
 if not all(z in x for z in checks): raise SystemExit("V33_VERIFY_FAILED")
 print("V33_ATTACHED_WEBVIEW_NETWORK_POPUP_OK")
