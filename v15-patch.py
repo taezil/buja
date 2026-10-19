@@ -755,31 +755,22 @@ if "var k=oc.indexOf('http')" not in x: raise SystemExit("V41B_VERIFY_FAILED")
 print("V41B_COMPILE_ESCAPE_FIX_OK")
 
 
-# v4.2 resolver diagnostics: record the actual Fallcent DOM CTA candidates and navigation requests.
-# Goal: one device test must reveal href/onclick/attributes + post-click navigation instead of another blind selector guess.
+# v4.2 resolver diagnostics: record actual CTA candidates/navigation with stable insertion points.
 p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
 x=p.read_text()
-# Expand the concise failure dialog with the already-bounded resolver trace.
 old='''new android.app.AlertDialog.Builder(a).setTitle("쿠팡 링크 추출 실패").setMessage("폴센트의 쿠팡 바로가기 주소를 가져오지 못했습니다.").setPositiveButton("확인",null).show();'''
-new='''new android.app.AlertDialog.Builder(a).setTitle("쿠팡 링크 진단").setMessage(trace.toString()).setPositiveButton("확인",null).show();'''
-if old not in x: raise SystemExit("V42_DIALOG_TARGET_MISSING")
-x=x.replace(old,new,1)
-
-# Add a one-shot DOM probe before polling. It records elements whose text mentions Coupang,
-# including tag/href/data attrs/onclick and a short outerHTML fragment.
-anchor='''final int[] tries={0}; final Runnable[] poll=new Runnable[1];'''
-if anchor not in x: raise SystemExit("V42_POLL_ANCHOR_MISSING")
-probe='''final int[] tries={0}; final Runnable[] poll=new Runnable[1];
-        v.evaluateJavascript("(function(){try{var es=[].slice.call(document.querySelectorAll('body *')).filter(function(e){var t=(e.innerText||e.textContent||'').replace(/\\\\s+/g,' ').trim();return t.indexOf('쿠팡')>=0&&t.length<120;}).slice(0,12);return es.map(function(e){var a=e;for(var i=0;i<5&&a;i++,a=a.parentElement){var h=a.href||a.getAttribute('href')||a.getAttribute('data-href')||a.getAttribute('data-url')||a.getAttribute('data-link')||'';var o=a.getAttribute('onclick')||'';if(h||o||a.tagName==='A'||a.tagName==='BUTTON')return [a.tagName,h,o,(a.outerHTML||'').slice(0,220)].join(' | ');}return [e.tagName,'','',(e.outerHTML||'').slice(0,220)].join(' | ');}).join('\\\\n---\\\\n');}catch(e){return 'DOMERR '+e;}})()",z->{if(z!=null)r.log("DOM "+z.replace("\\\\u003C","<").replace("\\\\u003E",">").replace("\\\\u0026","&"));});'''
-x=x.replace(anchor,probe,1)
-
-# Log every main-frame navigation request before existing resolver logic.
-needle='''public boolean shouldOverrideUrlLoading(android.webkit.WebView v,android.webkit.WebResourceRequest req){String z=req.getUrl().toString();r.follow(z);return r.coup(r.norm(z));}'''
-replacement='''public boolean shouldOverrideUrlLoading(android.webkit.WebView v,android.webkit.WebResourceRequest req){String z=req.getUrl().toString();r.log("NAV "+z);r.follow(z);return r.coup(r.norm(z));}'''
-if needle not in x: raise SystemExit("V42_NAV_TARGET_MISSING")
-x=x.replace(needle,replacement,1)
-
+if old in x:
+    x=x.replace(old,'''new android.app.AlertDialog.Builder(a).setTitle("쿠팡 링크 진단").setMessage(trace.toString()).setPositiveButton("확인",null).show();''',1)
+# Insert DOM probe immediately before the existing poll assignment, regardless of spacing/declaration form.
+pollpos=x.find("poll[0]=()->")
+if pollpos<0: raise SystemExit("V42_POLL_ASSIGN_MISSING")
+probe='''v.evaluateJavascript("(function(){try{var es=[].slice.call(document.querySelectorAll('body *')).filter(function(e){var t=(e.innerText||e.textContent||'').replace(/\\\\s+/g,' ').trim();return t.indexOf('쿠팡')>=0&&t.length<120;}).slice(0,12);return es.map(function(e){var a=e;for(var i=0;i<5&&a;i++,a=a.parentElement){var h=a.href||a.getAttribute('href')||a.getAttribute('data-href')||a.getAttribute('data-url')||a.getAttribute('data-link')||'';var o=a.getAttribute('onclick')||'';if(h||o||a.tagName==='A'||a.tagName==='BUTTON')return [a.tagName,h,o,(a.outerHTML||'').slice(0,220)].join(' | ');}return [e.tagName,'','',(e.outerHTML||'').slice(0,220)].join(' | ');}).join('\\\\n---\\\\n');}catch(e){return 'DOMERR '+e;}})()",z->{if(z!=null)r.log("DOM "+z.replace("\\\\u003C","<").replace("\\\\u003E",">").replace("\\\\u0026","&"));});
+        '''
+x=x[:pollpos]+probe+x[pollpos:]
+# Add NAV logging to both WebViewClient overloads by stable method prefix.
+sig="public boolean shouldOverrideUrlLoading(android.webkit.WebView v,android.webkit.WebResourceRequest req){String z=req.getUrl().toString();"
+if sig in x and 'req.getUrl().toString();r.log("NAV "+z);' not in x:
+    x=x.replace(sig,sig+'r.log("NAV "+z);',1)
 p.write_text(x)
-for z in ['setTitle("쿠팡 링크 진단")','r.log("DOM "+z','r.log("NAV "+z)']:
-    if z not in x: raise SystemExit("V42_VERIFY_FAILED "+z)
+if 'r.log("DOM "+z' not in x: raise SystemExit("V42_DOM_VERIFY_FAILED")
 print("V42_RESOLVER_DIAGNOSTICS_OK")
