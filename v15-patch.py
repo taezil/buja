@@ -451,3 +451,47 @@ p.write_text(x)
 checks=[]
 if not all(z in x for z in checks): raise SystemExit("V33_VERIFY_FAILED")
 print("V33_ATTACHED_WEBVIEW_NETWORK_POPUP_OK")
+
+
+# v3.4 resolver: delayed SPA polling, strict Coupang host check, intent normalization, visible diagnostics
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+# Replace permissive coup() and strengthen intent normalization inside the generated resolver.
+old='boolean coup(String z){return z!=null&&(z.contains("link.coupang.com")||z.contains("coupang.com")||z.startsWith("coupang://"));}'
+new='''boolean coup(String z){if(z==null)return false;if(z.startsWith("coupang://"))return true;try{String h=android.net.Uri.parse(z).getHost();return h!=null&&(h.equals("link.coupang.com")||h.equals("coupang.com")||h.equals("www.coupang.com")||h.equals("m.coupang.com"));}catch(Exception e){return false;}}'''
+if old not in x: raise SystemExit("V34_COUP_TARGET_MISSING")
+x=x.replace(old,new,1)
+old='''if(z.startsWith("intent://")){
+            try{android.content.Intent ii=android.content.Intent.parseUri(z,android.content.Intent.URI_INTENT_SCHEME);String fb=ii.getStringExtra("browser_fallback_url");if(fb!=null)return fb;}catch(Exception ignored){}
+          }'''
+new='''if(z.startsWith("intent://")){
+            try{android.content.Intent ii=android.content.Intent.parseUri(z,android.content.Intent.URI_INTENT_SCHEME);android.net.Uri dd=ii.getData();if(dd!=null&&dd.getScheme()!=null&&dd.getScheme().startsWith("http"))return dd.toString();String fb=ii.getStringExtra("browser_fallback_url");if(fb!=null)return fb;}catch(Exception ignored){}
+          }'''
+if old not in x: raise SystemExit("V34_INTENT_TARGET_MISSING")
+x=x.replace(old,new,1)
+# Replace one-shot DOM callback with a 500ms polling loop after page finish.
+needle='''r.go(z);if(done[0])return;
+        v.evaluateJavascript("(function(){var aa=[].slice.call(document.querySelectorAll('a[href]'));var a=aa.find(function(e){var h=e.href||'';var t=(e.innerText||'').replace(/\\s+/g,' ');return /쿠팡\\s*바로가기|쿠팡.*구매|구매하러/.test(t)||h.indexOf('api.ootoo.co.kr/cou/land.php')>=0||h.indexOf('api.adjoin.co.kr/cou/land.php')>=0||h.indexOf('fcnt.link/')>=0||h.indexOf('link.coupang.com')>=0;});return a?a.href:'';})()",q->{
+          if(q==null)return;String dest=q.replace("\\u0026","&").replace("\\u003D","=");if(dest.length()>1&&dest.charAt(0)==34&&dest.charAt(dest.length()-1)==34)dest=dest.substring(1,dest.length()-1);r.go(dest);if(!done[0]&&r.bridge(dest)){'''
+if needle not in x: raise SystemExit("V34_POLL_TARGET_MISSING")
+replacement='''r.go(z);if(done[0])return;
+        final int[] tries={0};final Runnable[] poll={null};poll[0]=()->{if(done[0]||tries[0]++>=24)return;v.evaluateJavascript("(function(){var aa=[].slice.call(document.querySelectorAll('a[href]'));var a=aa.find(function(e){var h=e.href||'';var t=(e.innerText||'').replace(/\\s+/g,' ');return /쿠팡\\s*바로가기|쿠팡.*구매|구매하러|최저가/.test(t)||h.indexOf('api.ootoo.co.kr/cou/land.php')>=0||h.indexOf('api.adjoin.co.kr/cou/land.php')>=0||h.indexOf('fcnt.link/')>=0||h.indexOf('link.coupang.com')>=0;});if(a){if(a.href)return a.href;a.click();}var b=[].slice.call(document.querySelectorAll('button,[role=button]')).find(function(e){return /쿠팡|바로가기|구매|최저가/.test((e.innerText||'')+(e.getAttribute('aria-label')||''));});if(b)b.click();var m=document.documentElement.innerHTML.match(/https?:\\/\\/link\\.coupang\\.com\\/[^\\s\\\"'<>\\\\]+/);return m?m[0]:'';})()",q->{
+          if(q!=null){String dest=q.replace("\\u0026","&").replace("\\u003D","=");if(dest.length()>1&&dest.charAt(0)==34&&dest.charAt(dest.length()-1)==34)dest=dest.substring(1,dest.length()-1);r.go(dest);if(!done[0]&&r.bridge(dest)){'''
+x=x.replace(needle,replacement,1)
+# close callback with reschedule before original page-finished braces.
+needle='''            }).start();
+          }
+        });
+      }
+    });'''
+if needle not in x: raise SystemExit("V34_POLL_CLOSE_MISSING")
+replacement='''            }).start();
+          }}if(!done[0])v.postDelayed(poll[0],500);
+        });};poll[0].run();
+      }
+    });'''
+x=x.replace(needle,replacement,1)
+p.write_text(x)
+for z in ["tries[0]++>=24","v.postDelayed(poll[0],500)","getHost()","ii.getData()"]:
+    if z not in x: raise SystemExit("V34_VERIFY_FAILED "+z)
+print("V34_SPA_POLL_HOST_INTENT_OK")
