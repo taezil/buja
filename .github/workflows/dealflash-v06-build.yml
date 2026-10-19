@@ -27,6 +27,12 @@ jobs:
           unzip -q ../dealflash-v12-source.zip
           cp ../v13-overlay/ServerSync.java app/src/main/java/com/dealflash/app/ServerSync.java
           python3 ../v15-patch.py
+          echo "=== PATCHED MainActivity image references ==="
+          grep -n -C 4 "h.image\|image" app/src/main/java/com/dealflash/app/MainActivity.java | head -120 || true
+          echo "=== PATCHED OpenProductActivity URL handling ==="
+          grep -n -C 5 "ACTION_VIEW\|fallcent\|coupang" app/src/main/java/com/dealflash/app/OpenProductActivity.java | head -180 || true
+          echo "=== PATCHED BrowserScanner image/url ==="
+          grep -n -C 3 "data-lazy-src\|out.push\|sourceUrl\|productUrl" app/src/main/java/com/dealflash/app/BrowserScanner.java | head -180 || true
           echo '=== Live Fallcent parser smoke test ==='
           curl -sSL --max-time 15 'https://fallcent.com/product/recommend/?from=gnb' -o /tmp/fallcent.html || true
           python3 - <<'PY'
