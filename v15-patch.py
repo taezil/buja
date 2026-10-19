@@ -261,3 +261,23 @@ for fn,needle in [
 ]:
     if needle not in Path(fn).read_text(): raise SystemExit("V27_VERIFY_FAILED "+fn)
 print("V27_DETAIL_GRAPH_FIRE_DEDUPE_OK")
+
+
+# v2.8 notification dedupe by normalized product title+price, not unstable Fallcent key/url
+p=Path("app/src/main/java/com/dealflash/app/NotificationHelper.java")
+x=p.read_text()
+old='ensureChannels(c);\n        Intent i=new Intent(c,MainActivity.class);'
+if old not in x: raise SystemExit("V28_NOTIFY_TARGET_MISSING")
+new='''String nt=(body==null?"":body).replaceAll("[^가-힣A-Za-z0-9]","").toLowerCase();String dk=source+"|"+nt;android.content.SharedPreferences ap=c.getSharedPreferences("dealflash_alert_dedupe_v2",0);long now=System.currentTimeMillis(),last=ap.getLong(dk,0);if(now-last<30L*60*1000)return;ap.edit().putLong(dk,now).apply();
+        ensureChannels(c);
+        Intent i=new Intent(c,MainActivity.class);'''
+x=x.replace(old,new,1)
+old='int request=Math.abs((key+safe).hashCode());'
+if old not in x: raise SystemExit("V28_REQUEST_TARGET_MISSING")
+x=x.replace(old,'int request=Math.abs(dk.hashCode());',1)
+old='c.getSystemService(NotificationManager.class).notify(Math.abs(("verified"+key+safe).hashCode()),n);'
+if old not in x: raise SystemExit("V28_NOTIFYID_TARGET_MISSING")
+x=x.replace(old,'c.getSystemService(NotificationManager.class).notify(Math.abs(("verified"+dk).hashCode()),n);',1)
+p.write_text(x)
+if 'dealflash_alert_dedupe_v2' not in x: raise SystemExit("V28_NOTIFY_VERIFY_FAILED")
+print("V28_NOTIFICATION_DEDUPE_OK")
