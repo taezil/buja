@@ -774,3 +774,15 @@ if sig in x and 'req.getUrl().toString();r.log("NAV "+z);' not in x:
 p.write_text(x)
 if 'r.log("DOM "+z' not in x: raise SystemExit("V42_DOM_VERIFY_FAILED")
 print("V42_RESOLVER_DIAGNOSTICS_OK")
+
+
+# v4.2c compile fix: callback variable must not shadow onPageFinished(String z).
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+needle='''})()",z->{if(z!=null)r.log("DOM "+z.replace("\\\\u003C","<").replace("\\\\u003E",">").replace("\\\\u0026","&"));});'''
+repl='''})()",dom->{if(dom!=null)r.log("DOM "+dom.replace("\\\\u003C","<").replace("\\\\u003E",">").replace("\\\\u0026","&"));});'''
+if needle not in x: raise SystemExit("V42C_TARGET_MISSING")
+x=x.replace(needle,repl,1)
+p.write_text(x)
+if '})()",dom->{if(dom!=null)r.log("DOM "+dom' not in x: raise SystemExit("V42C_VERIFY_FAILED")
+print("V42C_CALLBACK_SHADOW_FIX_OK")
