@@ -208,3 +208,17 @@ p.write_text(x)
 if 'final android.webkit.WebView w=' not in x: raise SystemExit("COUPANG_RESOLVER_VERIFY_FAILED")
 if 'web(c,u);' in x[x.index(' static void resolveFallcent'):x.index(' static void openCoupang')]: raise SystemExit("FALLCENT_FALLBACK_STILL_PRESENT")
 print("V25_COUPANG_RESOLVER_OK")
+
+
+# v2.6 dedupe existing and future hot rows by Fallcent product URL
+p=Path('app/src/main/java/com/dealflash/app/HotDealStore.java')
+x=p.read_text()
+old='for(Hot h:a)if(h.key.equals(key)){found=h;break;}'
+if old not in x: raise SystemExit('V26_DEDUPE_TARGET_MISSING')
+x=x.replace(old,'for(Hot h:a)if(h.key.equals(key)||(url!=null&&!url.isEmpty()&&url.equals(h.url))){found=h;break;}',1)
+old='for(Hot h:list){if(h.foundAt<keep||n>=1000)continue;a.put(h.json());n++;}'
+if old not in x: raise SystemExit('V26_SAVE_TARGET_MISSING')
+x=x.replace(old,'java.util.HashSet<String> seen=new java.util.HashSet<>();for(Hot h:list){if(h.foundAt<keep||n>=1000)continue;String du=h.url==null?"":h.url;if(!du.isEmpty()&&!seen.add(du))continue;a.put(h.json());n++;}',1)
+p.write_text(x)
+if 'seen.add(du)' not in x or 'url.equals(h.url)' not in x: raise SystemExit('V26_DEDUPE_VERIFY_FAILED')
+print('V26_DEDUPE_OK')
