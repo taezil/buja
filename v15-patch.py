@@ -350,3 +350,19 @@ x=x[:start]+resolver+x[end:]
 p.write_text(x)
 if 'api.ootoo.co.kr/cou/land.php' not in x or 'getQueryParameter("land")' not in x or 'onCreateWindow' not in x: raise SystemExit("V29_RESOLVER_VERIFY_FAILED")
 print("V29_FALLCENT_REAL_LINK_RESOLVER_OK")
+
+
+# v3.0 product integrity: bind title/image/price/url to the same recommendation card.
+# Bright Data reference repo is intentionally NOT embedded: it requires external credentials.
+p=Path("app/src/main/java/com/dealflash/app/BrowserScanner.java")
+x=p.read_text()
+old="var root=b&&b.parentElement?b.parentElement:a.parentElement;var im=(root&&root.querySelector?root.querySelector('img'):null)||a.querySelector('img');"
+if old not in x: raise SystemExit("V30_CARD_IMAGE_TARGET_MISSING")
+new="var root=a.closest('article,li,[class*=product],[class*=item],[class*=card]')||a;var im=(a.querySelector?a.querySelector('img'):null)||(root&&root.querySelector?root.querySelector('img'):null);"
+x=x.replace(old,new,1)
+# Avoid reusing an image from a broad parent container: require image to belong to this card/link.
+old2="if(!image&&root){var bg=getComputedStyle(root).backgroundImage||'';var z=bg.indexOf('url(');if(z>=0){image=bg.substring(z+4).replace(/[\"')]/g,'');}}"
+if old2 in x: x=x.replace(old2,"",1)
+p.write_text(x)
+if "a.closest('article,li,[class*=product],[class*=item],[class*=card]')" not in x: raise SystemExit("V30_CARD_BIND_VERIFY_FAILED")
+print("V30_SAME_CARD_PRODUCT_BINDING_OK")
