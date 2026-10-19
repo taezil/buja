@@ -1176,3 +1176,14 @@ if 'public void onBackPressed()' not in x:
 p.write_text(x)
 if 'HOT_DETAIL' not in x or 'POPULAR_DETAIL' not in x or 'onBackPressed()' not in x: raise SystemExit("V52_BACK_VERIFY_FAILED")
 print("V52_DETAIL_BACK_NAV_OK")
+
+
+# v5.3 durable server history payload: every observed product sends stable metadata + timestamp.
+# The server remains the persistence authority; app updates/reinstalls do not own the history.
+p=Path("app/src/main/java/com/dealflash/app/ServerSync.java")
+x=p.read_text()
+x=x.replace('o.put("price",Math.round(x.price));o.put("drop_rate",x.declaredDiscountPct);',
+'''o.put("price",Math.round(x.price));o.put("observed_at",System.currentTimeMillis());o.put("drop_rate",x.declaredDiscountPct);''')
+p.write_text(x)
+if 'observed_at' not in x: raise SystemExit("V53_SERVERSYNC_VERIFY_FAILED")
+print("V53_DURABLE_HISTORY_PAYLOAD_OK")
