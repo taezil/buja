@@ -1236,3 +1236,11 @@ x=p.read_text().replace("restoreDeals(Context c)","restoreDeals(android.content.
 p.write_text(x)
 if "restoreDeals(android.content.Context c)" not in x: raise SystemExit("V54B_CONTEXT_FIX_FAILED")
 print("V54B_CONTEXT_FIX_OK")
+
+
+# v5.4c compile fix: HistoryStore.load returns Map.
+p=Path("app/src/main/java/com/dealflash/app/ServerSync.java")
+x=p.read_text().replace("java.util.LinkedHashMap<String,HistoryStore.H> map=HistoryStore.load(c);","java.util.Map<String,HistoryStore.H> map=HistoryStore.load(c);")
+p.write_text(x)
+if "java.util.Map<String,HistoryStore.H> map=HistoryStore.load(c);" not in x: raise SystemExit("V54C_MAP_FIX_FAILED")
+print("V54C_MAP_FIX_OK")
