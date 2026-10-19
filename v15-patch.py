@@ -166,3 +166,31 @@ x=p.read_text()
 if 'ImageView pic=new ImageView(this)' not in x: raise SystemExit("HOT_IMAGE_PATCH_FAILED")
 if 'AppLauncher.openProduct(this,"FALLCENT"' not in x: raise SystemExit("HOT_LINK_PATCH_FAILED")
 print("EXACT_UI_PATCH_OK")
+
+
+# v2.5 compact cards + correct saved image + popular detail
+p=Path("app/src/main/java/com/dealflash/app/HotDealStore.java")
+x=p.read_text()
+old='found.title=title;found.url=url;found.source=source;found.current=current;found.reference=reference;found.dropPct=pct;found.lastVerifiedAt=now;found.verified=true;save(c,a);'
+if old not in x: raise SystemExit("HOTSTORE_TARGET_MISSING")
+new='found.title=title;found.url=url;found.source=source;found.current=current;found.reference=reference;found.dropPct=pct;found.lastVerifiedAt=now;found.verified=true;HistoryStore.H hi=HistoryStore.load(c).get(key);if(hi==null){for(HistoryStore.H z:HistoryStore.load(c).values())if((url!=null&&url.equals(z.url))||(title!=null&&title.equals(z.title))){hi=z;break;}}if(hi!=null&&hi.imageUrl!=null)found.imageUrl=hi.imageUrl;save(c,a);'
+x=x.replace(old,new,1)
+p.write_text(x)
+
+p=Path("app/src/main/java/com/dealflash/app/MainActivity.java")
+x=p.read_text()
+a=x.index('void hotCard(HotDealStore.Hot d){')
+b=x.index(' void showPopular(){',a)
+hot='''void hotCard(HotDealStore.Hot d){LinearLayout c=card();LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);ImageView pic=new ImageView(this);pic.setScaleType(ImageView.ScaleType.CENTER_CROP);row.addView(pic,new LinearLayout.LayoutParams(dp(104),dp(104)));String iu=d.imageUrl;if(iu==null||iu.isEmpty()){HistoryStore.H hi=HistoryStore.load(this).get(d.key);if(hi!=null)iu=hi.imageUrl;}loadImage(pic,iu);LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(12),0,0,0);LinearLayout badges=new LinearLayout(this);badges.addView(pill("▼ "+d.dropPct+"% 급락",RED));badges.addView(pill("  ✓ 검증완료",0xFF16A34A));info.addView(badges);TextView nm=t(cleanTitle(d.title),15,true);nm.setMaxLines(2);nm.setEllipsize(android.text.TextUtils.TruncateAt.END);info.addView(nm);TextView price=t(money(d.current),20,true);price.setTextColor(RED);info.addView(price);TextView meta=t(money(d.reference)+" · "+ago(d.foundAt)+" 발견",11,false);meta.setTextColor(MUTED);info.addView(meta);row.addView(info,new LinearLayout.LayoutParams(0,-2,1));c.addView(row);c.setOnClickListener(v->showHotDetail(d.key));content.addView(c);}
+'''
+x=x[:a]+hot+x[b:]
+old='c.setOnClickListener(v->AppLauncher.openProduct(this,"FALLCENT",x.url));content.addView(c);}}'
+if old not in x: raise SystemExit("POPULAR_CLICK_TARGET_MISSING")
+x=x.replace(old,'c.setOnClickListener(v->showPopularDetail(x));content.addView(c);}}',1)
+insert=x.index(' void showHotDetail(')
+detail=''' void showPopularDetail(HistoryStore.H h){content.removeAllViews();Button back=ghost("← 인기 목록");back.setOnClickListener(v->showPopular());content.addView(back);if(h.imageUrl!=null&&!h.imageUrl.isEmpty()){ImageView im=new ImageView(this);im.setScaleType(ImageView.ScaleType.CENTER_CROP);content.addView(im,new LinearLayout.LayoutParams(-1,dp(180)));loadImage(im,h.imageUrl);}content.addView(t(cleanTitle(h.title),22,true));TextView p=t(money(h.last)+(h.declaredDiscountPct>0?"   ▼ "+h.declaredDiscountPct+"%":""),28,true);p.setTextColor(RED);content.addView(p);LinearLayout info=card();info.addView(t("실시간 추천 상품",16,true));info.addView(t("DEAL "+h.dealScore+"점 · "+ago(h.lastSeen)+" 확인",13,false));content.addView(info);Button open=primary("쿠팡에서 상품 보기");open.setOnClickListener(v->AppLauncher.openProduct(this,"FALLCENT",h.url));content.addView(open,new LinearLayout.LayoutParams(-1,dp(56)));}
+'''
+x=x[:insert]+detail+x[insert:]
+p.write_text(x)
+if 'showPopularDetail(x)' not in x or 'String iu=d.imageUrl' not in x: raise SystemExit("V25_UI_VERIFY_FAILED")
+print("V25_UI_OK")
