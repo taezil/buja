@@ -54,7 +54,10 @@ jobs:
           gzip -dc /tmp/v25.patch.gz > /tmp/v25.patch
           sed '/^Binary files .*signing\/preview.keystore.* differ$/d' /tmp/v25.patch > /tmp/v25.clean.patch
           cd dealflash_build_min
-          # The archive used by CI omits a few docs/test-runner files present in the local v2.3 source.\n          # Apply all build-critical hunks and let the explicit checks/tests below validate the result.\n          patch -p3 --batch < /tmp/v25.clean.patch || true\n          mkdir -p signing
+          # The archive used by CI omits a few docs/test-runner files present in the local v2.3 source.
+          # Apply all build-critical hunks and let the explicit checks/tests below validate the result.
+          patch -p3 --batch < /tmp/v25.clean.patch || true
+          mkdir -p signing
           base64 -d ../dealflash-v25-patch/preview.keystore.b64 > signing/preview.keystore
           echo "49bbffba966efe1ea3a81e336eceb66082bef22ce4a874deacbfdc94b08130d7  signing/preview.keystore" | sha256sum -c -
           grep -q "versionName '2.5.0'" app/build.gradle
