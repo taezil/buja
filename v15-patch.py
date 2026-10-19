@@ -740,12 +740,16 @@ for z in ["querySelectorAll('body *')","data-link","onclick","V41"]:
 print("V41_FALLCENT_CTA_DEEP_CLICK_OK")
 
 
-# v4.1b compile fix: avoid quote-heavy onclick URL regex inside Java string.
+# v4.1b compile fix: replace the quote-heavy onclick matcher by locating its stable prefix/suffix.
 p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
 x=p.read_text()
-bad="""var oc=n.getAttribute('onclick')||'';var m=oc.match(/https?:[^'\\\"\\\\s)]+/);if(m)return m[0];"""
-good="""var oc=n.getAttribute('onclick')||'';var k=oc.indexOf('http');if(k>=0){var e=oc.indexOf(')',k);var h2=oc.substring(k,e>k?e:oc.length).replace(/['\\\\\\\"]/g,'');if(h2)return h2;}"""
-if bad not in x: raise SystemExit("V41B_TARGET_MISSING")
-x=x.replace(bad,good,1)
+s="var oc=n.getAttribute('onclick')||'';"
+i=x.find(s)
+if i<0: raise SystemExit("V41B_PREFIX_MISSING")
+j=x.find("if(n.tagName==='A'",i)
+if j<0: raise SystemExit("V41B_SUFFIX_MISSING")
+good="""var oc=n.getAttribute('onclick')||'';var k=oc.indexOf('http');if(k>=0){var e=oc.indexOf(')',k);var h2=oc.substring(k,e>k?e:oc.length).replace(/['\\\\]/g,'');if(h2)return h2;}"""
+x=x[:i]+good+x[j:]
 p.write_text(x)
+if "var k=oc.indexOf('http')" not in x: raise SystemExit("V41B_VERIFY_FAILED")
 print("V41B_COMPILE_ESCAPE_FIX_OK")
