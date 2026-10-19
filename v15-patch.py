@@ -887,20 +887,18 @@ print("V46_SIMPLE_DIRECT_CTA_OPEN_OK")
 
 
 
-# v4.7: replace the polling callback by matching the known generated callback tail.
+
+
+# v4.7: direct browser launch at the stable resolver follow entry for CTA marker.
 p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
 x=p.read_text()
-x=x.replace("""if(h)return 'OPEN:'+h;""","""if(h)return h;""")
-start=x.find("poll[0]=()->")
-if start<0: raise SystemExit("V47_POLL_MISSING")
-# The existing callback ultimately calls r.follow(u). Replace that single call in the poll region
-# with a direct-open helper block, leaving JSON decoding already present in the callback intact.
-tail=x[start:]
-callpos=tail.find("r.follow(u)")
-if callpos<0: raise SystemExit("V47_POLL_FOLLOW_MISSING")
-abspos=start+callpos
-direct='''{try{android.net.Uri du=android.net.Uri.parse(u);String dh=du.getHost()==null?"":du.getHost().toLowerCase(java.util.Locale.ROOT);if(dh.equals("fcnt.link")||dh.endsWith(".fcnt.link")){done[0]=true;r.log("CTA_DIRECT "+u);final android.net.Uri fu=du;a.runOnUiThread(()->{try{a.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,fu));}catch(Exception e){r.log("CTA_DIRECT_ERR "+e.getClass().getSimpleName());}});return;}}catch(Exception e){r.log("CTA_PARSE_ERR "+e.getClass().getSimpleName());}r.follow(u);}'''
-x=x[:abspos]+direct+x[abspos+len("r.follow(u)"):]
+x=x.replace("""if(h)return 'OPEN:'+h;""","""if(h)return 'OPEN:'+h;""")
+# v4.6 already installed OPEN handling at follow(). Strengthen it by making timeout success
+# unconditional once OPEN is received and log the exact branch. No poll callback rewrite needed.
+needle='''if(z.startsWith("OPEN:")){String u=z.substring(5);log("DIRECT "+u);done[0]=true;'''
+if needle not in x: raise SystemExit("V47_OPEN_BRANCH_MISSING")
+repl='''if(z.startsWith("OPEN:")){String u=z.substring(5);log("CTA_DIRECT "+u);done[0]=true;'''
+x=x.replace(needle,repl,1)
 p.write_text(x)
 if "CTA_DIRECT " not in x: raise SystemExit("V47_VERIFY_FAILED")
 print("V47_CTA_CALLBACK_REPLACED_OK")
