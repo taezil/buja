@@ -915,3 +915,71 @@ x=x.replace(needle,repl,1)
 p.write_text(x)
 if "new org.json.JSONTokener(z)" not in x: raise SystemExit("V48_VERIFY_FAILED")
 print("V48_JSON_CALLBACK_DECODE_OK")
+
+
+# v5.0: replace Fallcent launch path entirely with a small dedicated resolver.
+# This bypasses the accumulated legacy AppLauncher resolver for FALLCENT sources.
+p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
+x=p.read_text()
+
+# Insert a clean resolver helper before the final class brace.
+last=x.rfind("}")
+if last<0: raise SystemExit("V50_CLASS_END_MISSING")
+helper=r'''
+  static void openFallcentClean(android.app.Activity a,String input){
+    if(a==null||input==null||input.isEmpty())return;
+    final android.webkit.WebView w=new android.webkit.WebView(a);
+    w.getSettings().setJavaScriptEnabled(true);
+    w.getSettings().setDomStorageEnabled(true);
+    w.getSettings().setUserAgentString(android.webkit.WebSettings.getDefaultUserAgent(a));
+    android.webkit.CookieManager.getInstance().setAcceptCookie(true);
+    final boolean[] done={false};
+    w.setWebViewClient(new android.webkit.WebViewClient(){
+      @Override public void onPageFinished(android.webkit.WebView v,String url){
+        if(done[0])return;
+        v.evaluateJavascript("(function(){try{var es=document.querySelectorAll('a[href]');for(var i=0;i<es.length;i++){var t=(es[i].innerText||es[i].textContent||'').replace(/\\s+/g,' ').trim();var h=es[i].href||'';if((t.indexOf('쿠팡 바로가기')>=0||t.indexOf('쿠팡')>=0)&&h.indexOf('fcnt.link')>=0)return h;}return '';}catch(e){return '';}})()",raw->{
+          if(done[0]||raw==null||raw.equals("null")||raw.equals("\"\""))return;
+          try{
+            Object jv=new org.json.JSONTokener(raw).nextValue();
+            String u=jv==null?"":jv.toString();
+            android.net.Uri uri=android.net.Uri.parse(u);
+            String host=uri.getHost()==null?"":uri.getHost().toLowerCase(java.util.Locale.ROOT);
+            if(host.equals("fcnt.link")||host.endsWith(".fcnt.link")){
+              done[0]=true;
+              a.runOnUiThread(()->{
+                try{a.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,uri));}
+                catch(Exception ignore){}
+                try{w.destroy();}catch(Exception ignore){}
+              });
+            }
+          }catch(Exception ignore){}
+        });
+      }
+    });
+    // If input is already fcnt, browser handles its normal redirect context. Otherwise load Fallcent
+    // only to read its real CTA href.
+    try{
+      android.net.Uri iu=android.net.Uri.parse(input);
+      String ih=iu.getHost()==null?"":iu.getHost().toLowerCase(java.util.Locale.ROOT);
+      if(ih.equals("fcnt.link")||ih.endsWith(".fcnt.link")){
+        a.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,iu));
+        w.destroy();
+        return;
+      }
+    }catch(Exception ignore){}
+    w.loadUrl(input);
+  }
+'''
+x=x[:last]+helper+x[last:]
+
+# Route FALLCENT at the public launcher entry before any legacy resolver.
+# Find static method taking Context, source, url and inject first.
+m=re.search(r'(static\s+void\s+\w+\s*\(\s*(?:android\.content\.)?Context\s+(\w+)\s*,\s*String\s+(\w+)\s*,\s*String\s+(\w+)\s*\)\s*\{)',x)
+if not m: raise SystemExit("V50_PUBLIC_ENTRY_MISSING")
+ctx,src,url=m.group(2),m.group(3),m.group(4)
+route='''if("FALLCENT".equalsIgnoreCase('''+src+''')&&'''+ctx+''' instanceof android.app.Activity){openFallcentClean((android.app.Activity)'''+ctx+''','''+url+''');return;}'''
+x=x[:m.end()]+route+x[m.end():]
+
+p.write_text(x)
+if "openFallcentClean" not in x or 'equalsIgnoreCase' not in x: raise SystemExit("V50_VERIFY_FAILED")
+print("V50_CLEAN_FALLCENT_RESOLVER_OK")
