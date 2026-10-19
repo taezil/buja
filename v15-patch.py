@@ -788,26 +788,17 @@ if '})()",dom->{if(dom!=null)r.log("DOM "+dom' not in x: raise SystemExit("V42C_
 print("V42C_CALLBACK_SHADOW_FIX_OK")
 
 
-# v4.3: fcnt short links are blocked in embedded WebView (403). Do not retry the blocked bridge.
-# Route fcnt through the system browser, where the same user/device browser context can complete
-# Cloudflare/redirect handling. Fallcent detail URLs still use the in-app CTA resolver.
+# v4.3: confirmed fcnt.link returns 403 inside embedded WebView. Stop retrying that blocked path.
 p=Path("app/src/main/java/com/dealflash/app/AppLauncher.java")
 x=p.read_text()
-# Insert early, immediately after normalized input logging, before HTTP/WebView resolver work.
-needle='''r.log("INPUT "+url);'''
-if needle not in x: raise SystemExit("V43_INPUT_ANCHOR_MISSING")
-insert='''r.log("INPUT "+url);
-    try{
-      android.net.Uri iu=android.net.Uri.parse(url);
-      String ih=iu.getHost()==null?"":iu.getHost().toLowerCase(java.util.Locale.ROOT);
-      if(ih.equals("fcnt.link")||ih.endsWith(".fcnt.link")){
-        r.log("FCNT_BROWSER "+url);
-        android.content.Intent bi=new android.content.Intent(android.content.Intent.ACTION_VIEW,iu);
-        a.startActivity(bi);
-        return;
-      }
-    }catch(Exception ignore){}'''
-x=x.replace(needle,insert,1)
+# Locate resolver entry by its trace text rather than source formatting.
+pos=x.find('"INPUT "+')
+if pos<0: raise SystemExit("V43_INPUT_TEXT_MISSING")
+stmt_start=x.rfind(';',0,pos)+1
+stmt_end=x.find(';',pos)+1
+if stmt_end<=0: raise SystemExit("V43_INPUT_STMT_MISSING")
+insert='''\n    try{\n      android.net.Uri iu=android.net.Uri.parse(url);\n      String ih=iu.getHost()==null?"":iu.getHost().toLowerCase(java.util.Locale.ROOT);\n      if(ih.equals("fcnt.link")||ih.endsWith(".fcnt.link")){\n        android.content.Intent bi=new android.content.Intent(android.content.Intent.ACTION_VIEW,iu);\n        a.startActivity(bi);\n        return;\n      }\n    }catch(Exception ignore){}\n'''
+x=x[:stmt_end]+insert+x[stmt_end:]
 p.write_text(x)
-if 'FCNT_BROWSER' not in x: raise SystemExit("V43_VERIFY_FAILED")
+if 'ih.equals("fcnt.link")' not in x: raise SystemExit("V43_VERIFY_FAILED")
 print("V43_FCNT_SYSTEM_BROWSER_HANDOFF_OK")
