@@ -22,7 +22,7 @@ jobs:
       - name: Reconstruct v2.3 source
         shell: bash
         run: |
-          cat dealflash-v23-src/chunk_*.b64 > /tmp/dealflash-v23.b64
+          cat             dealflash-v23-src/chunk_00.b64             dealflash-v23-src/chunk_01.b64             dealflash-v23-src/chunk_02a.b64             dealflash-v23-src/chunk_02b.b64             dealflash-v23-src/chunk_03a.b64             dealflash-v23-src/chunk_03b.b64             dealflash-v23-src/chunk_04.b64             > /tmp/dealflash-v23.b64
           base64 -d /tmp/dealflash-v23.b64 > /tmp/dealflash-v23.tar.gz
           echo "80c97ecbaf92ac2c280ab01d835d7b5965da6354ec10b0aefa9e654cc5b9b7c1  /tmp/dealflash-v23.tar.gz" | sha256sum -c -
           tar -xzf /tmp/dealflash-v23.tar.gz
