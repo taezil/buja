@@ -92,7 +92,7 @@ for fn in ["MainActivity.java","OpenProductActivity.java"]:
 # v2.3 hard fix: image fallback from card CSS/background and non-blocking direct Coupang navigation
 p=Path("app/src/main/java/com/dealflash/app/BrowserScanner.java")
 x=p.read_text()
-x=x.replace("if(image.indexOf('//')===0)image='https:'+image;", "if(!image&&root){var bg=getComputedStyle(root).backgroundImage||'';var bm=bg.match(/url\\([\\\"']?([^\\\"')]+)[\\\"']?\\)/);if(bm)image=bm[1];}if(image.indexOf('//')===0)image='https:'+image;")
+x=x.replace("if(image.indexOf('//')===0)image='https:'+image;", "if(!image&&root){var bg=getComputedStyle(root).backgroundImage||'';var z=bg.indexOf('url(');if(z>=0){image=bg.substring(z+4).replace(/[\\\"')]/g,'');}}if(image.indexOf('//')===0)image='https:'+image;")
 p.write_text(x)
 
 # The previous resolver created a foreground WebView on every click, causing visible jank.
