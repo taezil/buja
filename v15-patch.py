@@ -611,3 +611,30 @@ for fp,z in [
  ("app/src/main/java/com/dealflash/app/AppLauncher.java","trace.length()<5000")]:
     if z not in Path(fp).read_text(): raise SystemExit("V36_VERIFY_FAILED "+z)
 print("V36_PRODUCT_BINDING_UI_TRACE_OK")
+
+
+# v3.7 repair Fallcent listing parser regression: robust same-card binding without over-specific /product/ selector
+p=Path("app/src/main/java/com/dealflash/app/BrowserScanner.java")
+x=p.read_text()
+a=x.index('    private static String fallcentListingScript() {')
+b=x.index('    private static String detailScript() {',a)
+method=r'''    private static String fallcentListingScript() {
+        return "(function(){"+
+        "var body=document.body?document.body.innerText:'';var blocked=/access denied|captcha|비정상적인 접근/i.test(body);"+
+        "var as=[].slice.call(document.querySelectorAll('a[href]'));var out=[],seen={};"+
+        "for(var i=0;i<as.length&&out.length<220;i++){var a=as[i],href=a.href||a.getAttribute('href')||'';if(!href||seen[href])continue;"+
+        "var card=null,p=a;for(var k=0;k<7&&p;k++,p=p.parentElement){var tx=(p.innerText||p.textContent||'').replace(/\\s+/g,' ').trim();if(tx.length>8&&tx.length<1200&&/(로켓배송|로켓직구|판매자로켓)/.test(tx)&&/(?:▼|↓)\\s*[0-9]{1,3}\\s*%/.test(tx)&&/[0-9][0-9,]{2,}\\s*원/.test(tx)){card=p;break;}}if(!card)continue;"+
+        "var t=(card.innerText||card.textContent||'').replace(/\\s+/g,' ').trim();if(t.indexOf('판매자배송')>=0)continue;var dm=t.match(/(?:▼|↓)\\s*([0-9]{1,3})\\s*%/);if(!dm)continue;"+
+        "var ps=[],m,re=/([0-9][0-9,]{2,})\\s*원/g;while((m=re.exec(t))!==null){var pv=parseInt(m[1].replace(/,/g,''),10)||0;if(pv>=100)ps.push(pv);}if(!ps.length)continue;"+
+        "var title='';var cand=card.querySelectorAll('h1,h2,h3,h4,strong,[class*=title],[class*=name]');for(var q=0;q<cand.length;q++){var ct=(cand[q].innerText||cand[q].textContent||'').replace(/\\s+/g,' ').trim();if(ct.length>=4&&ct.length<=180&&!/[0-9][0-9,]{2,}\\s*원/.test(ct)){title=ct;break;}}if(!title){var at=(a.innerText||a.textContent||'').replace(/\\s+/g,' ').trim();if(at.length>=4&&at.length<=180)title=at;}if(!title)title=t.replace(/역대급|타이밍|로켓배송|로켓직구|판매자로켓/g,' ').replace(/[0-9][0-9,]*\\s*원.*$/,'').trim();"+
+        "var image='';var ims=card.querySelectorAll('img');for(var q=0;q<ims.length;q++){var im=ims[q];var z=im.currentSrc||im.getAttribute('src')||im.getAttribute('data-src')||im.getAttribute('data-original')||im.getAttribute('data-lazy-src')||'';if(!z){var ss=im.getAttribute('srcset')||im.getAttribute('data-srcset')||'';if(ss)z=ss.split(',')[0].trim().split(' ')[0];}if(z&&z.indexOf('data:image')!==0){image=z;break;}}if(image.indexOf('//')===0)image='https:'+image;"+
+        "seen[href]=1;out.push({url:href,title:title,price:Math.min.apply(null,ps),base:0,discount:parseInt(dm[1],10)||0,image:image,rocket:true});}"+
+        "return JSON.stringify({url:location.href,title:document.title||'',blocked:blocked,blockReason:blocked?'접근 제한':'',links:as.length,items:out});"+
+        "})()";
+    }
+
+'''
+x=x[:a]+method+x[b:]
+p.write_text(x)
+if "document.querySelectorAll('a[href]')" not in x or "for(var k=0;k<7" not in x: raise SystemExit("V37_VERIFY_FAILED")
+print("V37_FALLCENT_SCAN_RECOVERY_OK")
