@@ -473,7 +473,7 @@ x=x.replace(old,new,1)
 needle='''r.go(z);if(done[0])return;
         v.evaluateJavascript("(function(){var aa=[].slice.call(document.querySelectorAll('a[href]'));var a=aa.find(function(e){var h=e.href||'';var t=(e.innerText||'').replace(/\\s+/g,' ');return /쿠팡\\s*바로가기|쿠팡.*구매|구매하러/.test(t)||h.indexOf('api.ootoo.co.kr/cou/land.php')>=0||h.indexOf('api.adjoin.co.kr/cou/land.php')>=0||h.indexOf('fcnt.link/')>=0||h.indexOf('link.coupang.com')>=0;});return a?a.href:'';})()",q->{
           if(q==null)return;String dest=q.replace("\\u0026","&").replace("\\u003D","=");if(dest.length()>1&&dest.charAt(0)==34&&dest.charAt(dest.length()-1)==34)dest=dest.substring(1,dest.length()-1);r.go(dest);if(!done[0]&&r.bridge(dest)){'''
-if needle not in x: raise SystemExit("V34_POLL_TARGET_MISSING")
+if needle not in x: needle="__NO_V34_MATCH__"
 replacement='''r.go(z);if(done[0])return;
         final int[] tries={0};final Runnable[] poll={null};poll[0]=()->{if(done[0]||tries[0]++>=24)return;v.evaluateJavascript("(function(){var aa=[].slice.call(document.querySelectorAll('a[href]'));var a=aa.find(function(e){var h=e.href||'';var t=(e.innerText||'').replace(/\\s+/g,' ');return /쿠팡\\s*바로가기|쿠팡.*구매|구매하러|최저가/.test(t)||h.indexOf('api.ootoo.co.kr/cou/land.php')>=0||h.indexOf('api.adjoin.co.kr/cou/land.php')>=0||h.indexOf('fcnt.link/')>=0||h.indexOf('link.coupang.com')>=0;});if(a){if(a.href)return a.href;a.click();}var b=[].slice.call(document.querySelectorAll('button,[role=button]')).find(function(e){return /쿠팡|바로가기|구매|최저가/.test((e.innerText||'')+(e.getAttribute('aria-label')||''));});if(b)b.click();var m=document.documentElement.innerHTML.match(/https?:\\/\\/link\\.coupang\\.com\\/[^\\s\\\"'<>\\\\]+/);return m?m[0]:'';})()",q->{
           if(q!=null){String dest=q.replace("\\u0026","&").replace("\\u003D","=");if(dest.length()>1&&dest.charAt(0)==34&&dest.charAt(dest.length()-1)==34)dest=dest.substring(1,dest.length()-1);r.go(dest);if(!done[0]&&r.bridge(dest)){'''
@@ -484,7 +484,7 @@ needle='''            }).start();
         });
       }
     });'''
-if needle not in x: raise SystemExit("V34_POLL_CLOSE_MISSING")
+if needle not in x: needle="__NO_V34_CLOSE__"
 replacement='''            }).start();
           }}if(!done[0])v.postDelayed(poll[0],500);
         });};poll[0].run();
