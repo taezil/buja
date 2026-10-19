@@ -337,7 +337,7 @@ resolver=r''' static void resolveFallcent(Context c,String u){
       @Override public void onPageFinished(android.webkit.WebView v,String z){
         r.go(z);if(done[0])return;
         v.evaluateJavascript("(function(){var aa=[].slice.call(document.querySelectorAll('a[href]'));var a=aa.find(function(e){var h=e.href||'';var t=(e.innerText||'').replace(/\\s+/g,' ');return /쿠팡\\s*바로가기|쿠팡.*구매|구매하러/.test(t)||h.indexOf('api.ootoo.co.kr/cou/land.php')>=0||h.indexOf('link.coupang.com')>=0;});return a?a.href:'';})()",q->{
-          if(q==null)return;String z=q.replace("\\u0026","&").replace("\\u003D","=");if(z.length()>1&&z.charAt(0)==34&&z.charAt(z.length()-1)==34)z=z.substring(1,z.length()-1);r.go(z);
+          if(q==null)return;String dest=q.replace("\\u0026","&").replace("\\u003D","=");if(dest.length()>1&&dest.charAt(0)==34&&dest.charAt(dest.length()-1)==34)dest=dest.substring(1,dest.length()-1);r.go(dest);
         });
       }
     });
