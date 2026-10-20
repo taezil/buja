@@ -1,8 +1,8 @@
-name: DealFlash v2.6.1 Preview APK
+name: DealFlash v2.7 Preview APK
 
 on:
   push:
-    branches: [dealflash-v261-run]
+    branches: [dealflash-v27-run]
   pull_request:
   workflow_dispatch:
 
@@ -101,6 +101,21 @@ jobs:
           grep -q "SIGNAL_FILTERS" app/src/main/java/com/dealflash/app/MainActivity.java
           grep -q "setAlertThreshold" app/src/main/java/com/dealflash/app/ServerSync.java
 
+      - name: Apply v2.7 patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat dealflash-v27-patch/p00.b64 > /tmp/v27.patch.gz.b64
+          base64 -d /tmp/v27.patch.gz.b64 > /tmp/v27.patch.gz
+          echo "5544768be36f23c23b62c101abdea746c897d58c2037aa3acf5b353f26d72413  /tmp/v27.patch.gz" | sha256sum -c -
+          gzip -dc /tmp/v27.patch.gz > /tmp/v27.patch
+          cd dealflash_build_min
+          patch -p1 --batch < /tmp/v27.patch
+          grep -q "versionName '2.7.0'" app/build.gradle
+          grep -q "class MiniPriceChartView" app/src/main/java/com/dealflash/app/MiniPriceChartView.java
+          grep -q "지금 가장 강한 딜" app/src/main/java/com/dealflash/app/MainActivity.java
+          grep -q "thresholdSyncOk" app/src/main/java/com/dealflash/app/ServerSync.java
+
       - name: Run Java identity and pipeline tests
         working-directory: dealflash_build_min
         shell: bash
@@ -135,22 +150,22 @@ jobs:
           set -euo pipefail
           chmod +x build-apk.sh
           ANDROID_HOME="$ANDROID_HOME" ./build-apk.sh preview
-          test -f build/manual-preview/DealFlash-v2.6.1-preview.apk
+          test -f build/manual-preview/DealFlash-v2.7.0-preview.apk
 
       - name: Package exact source
         working-directory: dealflash_build_min
         shell: bash
         run: |
           set -euo pipefail
-          zip -qr /tmp/DealFlash-v2.6.1-source.zip . -x 'build/*' '.gradle/*' 'server-v26/node_modules/*' 'server-v26/dist/*'
+          zip -qr /tmp/DealFlash-v2.7.0-source.zip . -x 'build/*' '.gradle/*' 'server-v26/node_modules/*' 'server-v26/dist/*'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.6.1-preview-apk
+          name: DealFlash-v2.7.0-preview-apk
           path: dealflash_build_min/build/manual-preview/DealFlash-v2.6.1-preview.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.6.1-source
+          name: DealFlash-v2.7.0-source
           path: /tmp/DealFlash-v2.6.1-source.zip
 
