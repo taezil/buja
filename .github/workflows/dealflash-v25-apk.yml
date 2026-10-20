@@ -168,10 +168,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: DealFlash-v2.7.0-preview-apk
-          path: dealflash_build_min/build/manual-preview/DealFlash-v2.6.1-preview.apk
+          path: dealflash_build_min/build/manual-preview/DealFlash-v2.7.0-preview.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: DealFlash-v2.7.0-source
-          path: /tmp/DealFlash-v2.6.1-source.zip
+          path: /tmp/DealFlash-v2.7.0-source.zip
 
