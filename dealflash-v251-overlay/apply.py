@@ -60,7 +60,7 @@ replace("app/src/main/java/com/dealflash/app/ProductUrl.java",
             URI u = new URI(unescape(raw.trim()));
             String host = u.getHost();
             if (host == null) return null;
-            String lower = host.toLowerCase(java.util.Locale.ROOT).replaceFirst("^www\\.", "");
+            String lower = host.toLowerCase(java.util.Locale.ROOT).replaceFirst("^www\\\\.", "");
             if ("fcnt.link".equals(lower)) {
                 String token = u.getPath() == null ? "" : u.getPath().replaceAll("^/+|/+$", "");
                 return token.isEmpty() ? null : "https://fcnt.link/" + token;
