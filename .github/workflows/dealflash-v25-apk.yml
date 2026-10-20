@@ -137,7 +137,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          zip -qr /tmp/DealFlash-v2.6-source.zip . -x 'build/*' '.gradle/*'
+          zip -qr /tmp/DealFlash-v2.6-source.zip . -x 'build/*' '.gradle/*' 'server-v26/node_modules/*' 'server-v26/dist/*'
 
       - uses: actions/upload-artifact@v4
         with:
