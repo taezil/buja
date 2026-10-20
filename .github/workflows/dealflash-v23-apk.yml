@@ -1,0 +1,38 @@
+name: DealFlash v2.3 APK
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Reconstruct v2.3 source
+        shell: bash
+        run: |
+          cat             dealflash-v23-src/chunk_00.b64             dealflash-v23-src/chunk_01.b64             dealflash-v23-src/chunk_02a.b64             dealflash-v23-src/chunk_02b.b64             dealflash-v23-src/chunk_03a.b64             dealflash-v23-src/chunk_03b.b64             dealflash-v23-src/chunk_04.b64             > /tmp/dealflash-v23.b64
+          base64 -d /tmp/dealflash-v23.b64 > /tmp/dealflash-v23.tar.gz
+          echo "80c97ecbaf92ac2c280ab01d835d7b5965da6354ec10b0aefa9e654cc5b9b7c1  /tmp/dealflash-v23.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/dealflash-v23.tar.gz
+          test -f dealflash_build_min/app/build.gradle
+
+      - name: Build debug APK
+        working-directory: dealflash_build_min
+        run: gradle :app:assembleDebug --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DealFlash-v2.3-debug-apk
+          path: dealflash_build_min/app/build/outputs/apk/debug/app-debug.apk
