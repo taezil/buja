@@ -121,6 +121,17 @@ jobs:
           ANDROID_HOME="$ANDROID_HOME" ./build-apk.sh preview
           test -f build/manual-preview/DealFlash-v2.6-preview.apk
 
+      - name: Build dashboard-paste Worker bundle
+        working-directory: dealflash_build_min/server-v26
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install
+          rm -rf dist
+          npx wrangler deploy --dry-run --outdir=dist
+          test -f dist/index.js
+          cp dist/index.js /tmp/DealFlash-v2.6-worker-dashboard.js
+
       - name: Package exact source
         working-directory: dealflash_build_min
         shell: bash
@@ -137,3 +148,8 @@ jobs:
         with:
           name: DealFlash-v2.6-source
           path: /tmp/DealFlash-v2.6-source.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DealFlash-v2.6-worker-dashboard
+          path: /tmp/DealFlash-v2.6-worker-dashboard.js
