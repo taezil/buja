@@ -1,4 +1,4 @@
-name: DealFlash v2.5.3 Preview APK
+name: DealFlash v2.6 Preview APK
 
 on:
   pull_request:
@@ -66,9 +66,24 @@ jobs:
           echo "4fe55ad180970118d5f0bca589965525a322b9f1bf95ce962d56dfee38f274b9  /tmp/v253.patch.gz" | sha256sum -c -
           gzip -dc /tmp/v253.patch.gz > /tmp/v253.patch
           patch -p1 --batch < /tmp/v253.patch
-          grep -q "versionName '2.5.3'" app/build.gradle
+          cat \
+            ../dealflash-v26-patch/p00.b64 \
+            ../dealflash-v26-patch/p01.b64 \
+            ../dealflash-v26-patch/p02.b64 \
+            ../dealflash-v26-patch/p03.b64 \
+            ../dealflash-v26-patch/p04.b64 \
+            ../dealflash-v26-patch/p05.b64 \
+            ../dealflash-v26-patch/p06.b64 \
+            > /tmp/v26.patch.gz.b64
+          base64 -d /tmp/v26.patch.gz.b64 > /tmp/v26.patch.gz
+          echo "c304fad3ca51e8fc312ea7d18554f6af3d5ee9dd53e949bbb92804e3abf9251d  /tmp/v26.patch.gz" | sha256sum -c -
+          gzip -dc /tmp/v26.patch.gz > /tmp/v26.patch
+          patch -p1 --batch < /tmp/v26.patch
+          grep -q "versionName '2.6.0'" app/build.gradle
           grep -q "class DealUrgency" app/src/main/java/com/dealflash/app/DealUrgency.java
           grep -q "class MarketComparison" app/src/main/java/com/dealflash/app/MarketComparison.java
+          grep -q "class ServerPollJobService" app/src/main/java/com/dealflash/app/ServerPollJobService.java
+          test -f server-v26/src/index.js
 
       - name: Run Java identity and pipeline tests
         working-directory: dealflash_build_min
@@ -104,21 +119,21 @@ jobs:
           set -euo pipefail
           chmod +x build-apk.sh
           ANDROID_HOME="$ANDROID_HOME" ./build-apk.sh preview
-          test -f build/manual-preview/DealFlash-v2.5.3-preview.apk
+          test -f build/manual-preview/DealFlash-v2.6-preview.apk
 
       - name: Package exact source
         working-directory: dealflash_build_min
         shell: bash
         run: |
           set -euo pipefail
-          zip -qr /tmp/DealFlash-v2.5.3-source.zip . -x 'build/*' '.gradle/*'
+          zip -qr /tmp/DealFlash-v2.6-source.zip . -x 'build/*' '.gradle/*'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.5.3-preview-apk
-          path: dealflash_build_min/build/manual-preview/DealFlash-v2.5.3-preview.apk
+          name: DealFlash-v2.6-preview-apk
+          path: dealflash_build_min/build/manual-preview/DealFlash-v2.6-preview.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.5.3-source
-          path: /tmp/DealFlash-v2.5.3-source.zip
+          name: DealFlash-v2.6-source
+          path: /tmp/DealFlash-v2.6-source.zip
