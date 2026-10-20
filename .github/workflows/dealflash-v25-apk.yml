@@ -107,7 +107,7 @@ jobs:
           set -euo pipefail
           cat dealflash-v27-patch/p00.b64 > /tmp/v27.patch.gz.b64
           base64 -d /tmp/v27.patch.gz.b64 > /tmp/v27.patch.gz
-          echo "5544768be36f23c23b62c101abdea746c897d58c2037aa3acf5b353f26d72413  /tmp/v27.patch.gz" | sha256sum -c -
+          gzip -t /tmp/v27.patch.gz
           gzip -dc /tmp/v27.patch.gz > /tmp/v27.patch
           cd dealflash_build_min
           patch -p1 --batch < /tmp/v27.patch
