@@ -1,4 +1,4 @@
-name: DealFlash v2.9.1 APK
+name: DealFlash v2.9.2 APK
 
 on:
   push:
@@ -164,6 +164,15 @@ jobs:
           grep -q "versionName '2.9.1'" dealflash_build_min/app/build.gradle
           grep -q "FCM is itself a fresh" dealflash_build_min/app/src/main/java/com/dealflash/app/DealFlashMessagingService.java
           grep -q "deals_sync_error" dealflash_build_min/app/src/main/java/com/dealflash/app/ServerSync.java
+
+      - name: Apply v2.9.2 feed and manual-scan patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 dealflash-v292-fix/apply.py
+          grep -q "versionName '2.9.2'" dealflash_build_min/app/build.gradle
+          grep -q 'startsWith("fcurl:")' dealflash_build_min/app/src/main/java/com/dealflash/app/ProductIdentity.java
+          grep -q "manualScanAndRefresh" dealflash_build_min/app/src/main/java/com/dealflash/app/ServerSync.java
 
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
