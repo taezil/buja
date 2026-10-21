@@ -1,4 +1,4 @@
-name: DealFlash v2.9.2 APK
+name: DealFlash v2.9.5 APK
 
 on:
   push:
@@ -175,6 +175,22 @@ jobs:
           grep -q "manualScanAndRefresh" dealflash_build_min/app/src/main/java/com/dealflash/app/ServerSync.java
           grep -q 'last_drop_rate' dealflash_build_min/app/src/main/java/com/dealflash/app/ServerSync.java
 
+      - name: Apply v2.9.5 server-identity feed fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 dealflash-v295-fix/apply.py dealflash_build_min
+          grep -q "versionName '2.9.5'" dealflash_build_min/app/build.gradle
+          grep -q "class DealsRepository" dealflash_build_min/app/src/main/java/com/dealflash/app/DealsRepository.java
+          grep -q "checkServer" dealflash_build_min/app/src/main/java/com/dealflash/app/DataQuality.java
+
+      - name: JVM tests (production /api/deals payload replay)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash dealflash-v295-fix/tests/run.sh "$PWD/dealflash_build_min" | tee /tmp/jvm-tests.log
+          grep -q "Integration: .* 0 failed" /tmp/jvm-tests.log
+
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -187,7 +203,7 @@ jobs:
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" >/dev/null
 
-      - name: Build v2.9.1 APK
+      - name: Build v2.9.5 APK
         working-directory: dealflash_build_min
         shell: bash
         run: |
@@ -198,23 +214,23 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$APK" | tee /tmp/badging.txt
           grep -q "package: name='com.dealflash.app'" /tmp/badging.txt
-          cp "$APK" /tmp/DealFlash-v2.9.1.apk
-          sha256sum /tmp/DealFlash-v2.9.1.apk
+          cp "$APK" /tmp/DealFlash-v2.9.5.apk
+          sha256sum /tmp/DealFlash-v2.9.5.apk
 
       - name: Package exact source
         working-directory: dealflash_build_min
         shell: bash
         run: |
           set -euo pipefail
-          zip -qr /tmp/DealFlash-v2.9.0-source.zip . \
+          zip -qr /tmp/DealFlash-v2.9.5-source.zip . \
             -x 'app/build/*' '.gradle/*' 'server-v26/node_modules/*' 'server-v26/dist/*'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.9.0-apk
-          path: /tmp/DealFlash-v2.9.1.apk
+          name: DealFlash-v2.9.5-apk
+          path: /tmp/DealFlash-v2.9.5.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.9.0-source
-          path: /tmp/DealFlash-v2.9.0-source.zip
+          name: DealFlash-v2.9.5-source
+          path: /tmp/DealFlash-v2.9.5-source.zip
