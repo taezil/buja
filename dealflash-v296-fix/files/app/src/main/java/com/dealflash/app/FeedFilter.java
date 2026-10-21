@@ -17,6 +17,8 @@ public final class FeedFilter {
     public static boolean isPriceStale(HistoryStore.H h,long now){return h!=null&&h.lastSeen>0&&now-h.lastSeen>PRICE_STALE_MS;}
     /** Comparator prefix for the deal tabs: freshly confirmed prices first, possibly-ended ones after, regardless of the chosen sort. */
     public static int freshFirst(HistoryStore.H a,HistoryStore.H b,long now){return Boolean.compare(isPriceStale(a,now),isPriceStale(b,now));}
+    /** Same, but also demotes rows a live Coupang re-check found already ended (key set built once per sort). */
+    public static int freshFirst(HistoryStore.H a,HistoryStore.H b,long now,java.util.Set<String> endedKeys){return Boolean.compare(isPriceStale(a,now)||endedKeys.contains(a.key),isPriceStale(b,now)||endedKeys.contains(b.key));}
 
     public static final class Params {
         public String screen="급락",category="전체",signal="전체",query="";

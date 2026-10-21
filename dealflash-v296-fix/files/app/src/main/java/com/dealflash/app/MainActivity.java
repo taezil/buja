@@ -174,7 +174,7 @@ public class MainActivity extends Activity {
         FeedFilter.Params fp=new FeedFilter.Params();fp.screen=screen;fp.category=category;fp.signal=signalFilter;fp.query=query;fp.minDrop=minDrop;fp.minSaving=minSaving;
         fp.evidenceOnly=evidenceOnly;fp.favoritesOnly=favoritesOnly;fp.hotKeys=hot.keySet();fp.favorite=this::favorite;fp.categoryOf=this::categoryOf;
         for(HistoryStore.H x:FeedFilter.cards(history.values(),fp,now,evidence)){urgency.put(x.key,DealUrgency.score(x,evidence.get(x.key),now));shown.add(x);}
-        final long sortNow=System.currentTimeMillis();final boolean freshFirstTab=!"보관".equals(screen);shown.sort((a,b)->{if(freshFirstTab){int fr=FeedFilter.freshFirst(a,b,sortNow);if(fr!=0)return fr;}DealScore.Evidence x=evidence.get(a.key),y=evidence.get(b.key);int ux=urgency.get(a.key),uy=urgency.get(b.key),c=0;switch(sort){case 1:c=Integer.compare(b.declaredDiscountPct,a.declaredDiscountPct);break;case 2:c=Double.compare(y.count>=3?y.saving:0,x.count>=3?x.saving:0);break;case 3:c=Long.compare(b.firstSeen,a.firstSeen);break;case 4:c=Integer.compare(signalCount(b),signalCount(a));break;case 5:c=Double.compare(a.last,b.last);break;default:c=Integer.compare(uy,ux);if(c==0)c=Boolean.compare(y.errorCandidate,x.errorCandidate);if(c==0)c=Integer.compare(y.score,x.score);break;}if(c==0)c=Long.compare(b.firstSeen,a.firstSeen);return c==0?a.key.compareTo(b.key):c;});
+        final long sortNow=System.currentTimeMillis();final boolean freshFirstTab=!"보관".equals(screen);final java.util.HashSet<String> endedKeys=new java.util.HashSet<>();if(freshFirstTab)for(HistoryStore.H sh:shown)if(PriceCheck.endedByCheck(this,sh))endedKeys.add(sh.key);shown.sort((a,b)->{if(freshFirstTab){int fr=FeedFilter.freshFirst(a,b,sortNow,endedKeys);if(fr!=0)return fr;}DealScore.Evidence x=evidence.get(a.key),y=evidence.get(b.key);int ux=urgency.get(a.key),uy=urgency.get(b.key),c=0;switch(sort){case 1:c=Integer.compare(b.declaredDiscountPct,a.declaredDiscountPct);break;case 2:c=Double.compare(y.count>=3?y.saving:0,x.count>=3?x.saving:0);break;case 3:c=Long.compare(b.firstSeen,a.firstSeen);break;case 4:c=Integer.compare(signalCount(b),signalCount(a));break;case 5:c=Double.compare(a.last,b.last);break;default:c=Integer.compare(uy,ux);if(c==0)c=Boolean.compare(y.errorCandidate,x.errorCandidate);if(c==0)c=Integer.compare(y.score,x.score);break;}if(c==0)c=Long.compare(b.firstSeen,a.firstSeen);return c==0?a.key.compareTo(b.key):c;});
         String signalSuffix="발견".equals(screen)&&!"전체".equals(signalFilter)?" · "+signalFilter:"";String alertSuffix="급락".equals(screen)?" · 알림 "+ScannerPrefs.threshold(this)+"%+":"";
         int variants=0;for(HistoryStore.H h:history.values())if(DataQuality.visible(h)&&now-h.lastSeen<=24L*60*60*1000)variants++;String tally=variants>shown.size()?"상품 "+shown.size()+"개 · 옵션 "+variants+"개":"현재 "+shown.size()+"개 포착";count.setText(shown.isEmpty()?emptyMessage():tally+signalSuffix+alertSuffix);adapter.notifyDataSetChanged();list.setSelectionFromTop(pos,top);
     }
@@ -209,8 +209,8 @@ public class MainActivity extends Activity {
             h.name.setText(ProductUX.display(x.title));h.price.setText(money(x.last));
             if(e.count>=3&&e.reference>x.last){h.ref.setText("기준 "+money(e.reference)+" · "+money(e.saving)+" 절약");h.ref.setPaintFlags(h.ref.getPaintFlags()&~Paint.STRIKE_THRU_TEXT_FLAG);}else{h.ref.setText("가격 이력 수집 중");h.ref.setPaintFlags(h.ref.getPaintFlags()&~Paint.STRIKE_THRU_TEXT_FLAG);}
             String sig=signalText(x);long age=System.currentTimeMillis()-x.lastSeen;
-            boolean stale=FeedFilter.isPriceStale(x,System.currentTimeMillis());
-            h.meta.setText((sig.isEmpty()?"":sig+" · ")+ago(x.lastSeen)+" 확인"+(stale?" · 가격 변동 가능":""));h.meta.setTextColor(stale?amber:muted);h.price.setTextColor(stale?muted:accent);
+            boolean ended=PriceCheck.endedByCheck(MainActivity.this,x);boolean stale=ended||FeedFilter.isPriceStale(x,System.currentTimeMillis());
+            h.meta.setText((sig.isEmpty()?"":sig+" · ")+ago(x.lastSeen)+" 확인"+(ended?" · 쿠팡에서 가격 올라감":stale?" · 가격 변동 가능":""));h.meta.setTextColor(stale?amber:muted);h.price.setTextColor(stale?muted:accent);
             h.heart.setText(favorite(x.key)?"♥":"♡");h.heart.setTextColor(favorite(x.key)?accent:muted);h.heart.setContentDescription("보관");
             h.heart.setOnClickListener(v->{boolean next=!favorite(x.key);getSharedPreferences("favorites",0).edit().putBoolean(x.key,next).apply();h.heart.setText(next?"♥":"♡");h.heart.setTextColor(next?accent:muted);if("보관".equals(screen))reload();});
             h.image.setContentDescription(ProductUX.display(x.title));ProductImages.loadThumb(MainActivity.this,h.image,x.imageUrl,x.key,dp(92));return recycled;
@@ -265,6 +265,7 @@ public class MainActivity extends Activity {
         TextView quickBuy=primaryButton("⚡ 바로 가격 확인");LinearLayout.LayoutParams qbp=new LinearLayout.LayoutParams(-1,dp(58));qbp.setMargins(0,dp(12),0,dp(3));c.addView(quickBuy,qbp);quickBuy.setOnClickListener(v->AppLauncher.openProduct(this,x.source,x.url));
         c.addView(text("발견 "+ago(x.firstSeen)+" · 마지막 확인 "+ago(x.lastSeen),11,false,muted));
         if(FeedFilter.isPriceStale(x,System.currentTimeMillis())){TextView sw=text("마지막 확인이 "+ago(x.lastSeen)+"이에요. 쿠팡에서 가격이 이미 올랐을 수 있으니 '바로 가격 확인'으로 현재 가격을 먼저 확인해 주세요.",12,false,amber);sw.setPadding(0,dp(4),0,dp(2));c.addView(sw);}
+        if(x.declaredDiscountPct>=60||PriceCheck.stored(this,x.key)!=null)addPriceCheck(c,x);
 
         LinearLayout judge=panel();judge.addView(text("딜 요약",13,true,muted));String summary=(signalCount(x)>1?"폴센트 신호 "+signalCount(x)+"개 동시포착":"폴센트 급락 신호 포착")+" · "+ago(x.lastSeen)+" 확인";judge.addView(text(summary,18,true,ink));judge.addView(text("표시 할인율과 현재 가격을 먼저 보여주고, 과거 가격은 아래에서 참고용으로 확인할 수 있어요.",13,false,muted));c.addView(judge);
 
@@ -355,6 +356,27 @@ public class MainActivity extends Activity {
     private int number(EditText e){try{return Math.max(0,Integer.parseInt(e.getText().toString()));}catch(Exception ex){return 0;}}
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private String money(double n){return !Double.isFinite(n)||n<=0?"정보 없음":NumberFormat.getIntegerInstance(Locale.KOREA).format(Math.round(n))+"원";}
+    /** "쿠팡 현재가 확인": re-reads the live Coupang price on this phone. Auto-runs for stale 60%+ deals, otherwise on tap. */
+    private void addPriceCheck(LinearLayout c,HistoryStore.H x){
+        final TextView res=text("",12,false,muted);res.setPadding(0,dp(8),0,dp(2));c.addView(res);
+        final TextView btn=text("쿠팡 현재가 확인",14,true,ink);btn.setGravity(android.view.Gravity.CENTER);btn.setBackground(stroked(card,14,border,1));
+        LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,dp(48));bp.setMargins(0,dp(6),0,dp(4));c.addView(btn,bp);
+        final Runnable start=()->{btn.setEnabled(false);btn.setAlpha(0.5f);res.setTextColor(muted);res.setText("쿠팡에서 현재 가격을 확인하는 중… (최대 1분)");
+            PriceCheck.run(this,x,(st,price,note)->{btn.setEnabled(true);btn.setAlpha(1f);renderCheck(res,st,price,System.currentTimeMillis(),note);});};
+        btn.setOnClickListener(v->start.run());
+        String[] v0=PriceCheck.stored(this,x.key);long now=System.currentTimeMillis();
+        if(v0!=null)renderCheck(res,v0[0],Double.parseDouble(v0[1]),Long.parseLong(v0[2]),v0[3]);
+        boolean recent=v0!=null&&now-Long.parseLong(v0[2])<10*60_000L;
+        if(!recent&&x.declaredDiscountPct>=60&&FeedFilter.isPriceStale(x,now))start.run();
+    }
+    private void renderCheck(TextView res,String status,double price,long at,String note){
+        String when=ago(at);int col=muted;String t;
+        if(PriceVerdict.SAME.equals(status)){t="쿠팡 확인 · 현재 "+money(price)+" · 아직 유효해요";col=green;}
+        else if(PriceVerdict.UP.equals(status)){t="쿠팡 확인 · 현재 "+money(price)+" · 가격이 올라서 급락이 끝났어요";col=amber;}
+        else if(PriceVerdict.DOWN.equals(status)){t="쿠팡 확인 · 현재 "+money(price)+" · 더 내려갔어요";col=green;}
+        else{t="쿠팡 확인 불가"+(note==null||note.isEmpty()?"":" · "+note)+" · '바로 가격 확인'으로 직접 확인해 주세요";}
+        res.setTextColor(col);res.setText(t+" ("+when+")");
+    }
     private String ago(long t){if(t<=0)return "미확인";long m=Math.max(0,(System.currentTimeMillis()-t)/60000);return m==0?"방금":m<60?m+"분 전":m<1440?m/60+"시간 전":m/1440+"일 전";}
     private String date(long t){return t<=0?"미확인":new SimpleDateFormat("MM.dd HH:mm",Locale.KOREA).format(new Date(t));}
     @Override protected void onDestroy(){handler.removeCallbacks(tick);try{reads.shutdownNow();}catch(Exception ignored){}super.onDestroy();}

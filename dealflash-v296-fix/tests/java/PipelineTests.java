@@ -73,6 +73,12 @@ public class PipelineTests {
   HistoryStore.H fr1=new HistoryStore.H();fr1.lastSeen=now-5*60*1000L;HistoryStore.H st1=new HistoryStore.H();st1.lastSeen=now-31*60*1000L;HistoryStore.H un=new HistoryStore.H();
   check(!FeedFilter.isPriceStale(fr1,now)&&FeedFilter.isPriceStale(st1,now)&&!FeedFilter.isPriceStale(un,now),"price older than 30 min is flagged possibly ended; unknown time is not");
   java.util.List<HistoryStore.H> ord=new java.util.ArrayList<>(Arrays.asList(st1,fr1));ord.sort((o1,o2)->FeedFilter.freshFirst(o1,o2,now));check(ord.get(0)==fr1,"freshly confirmed prices sort before possibly-ended ones");
+  check(PriceVerdict.UP.equals(PriceVerdict.classify(10340,39360))&&PriceVerdict.SAME.equals(PriceVerdict.classify(10340,10500))&&PriceVerdict.DOWN.equals(PriceVerdict.classify(10340,8000))&&PriceVerdict.UNKNOWN.equals(PriceVerdict.classify(10340,0)),"coupang re-check classifies up / same (2% or 300 won) / down / unknown");
+  String[] pv=PriceVerdict.decode(PriceVerdict.encode(PriceVerdict.UP,39360,1000,"a|b"));
+  check(pv!=null&&pv[0].equals("UP")&&pv[1].equals("39360")&&pv[2].equals("1000")&&pv[3].equals("a/b")&&PriceVerdict.decode("garbage")==null&&PriceVerdict.decode("UP|x|1")==null,"re-check verdict storage round-trips and rejects malformed values");
+  check(PriceVerdict.endedByCheck(pv,900)&&!PriceVerdict.endedByCheck(pv,2000)&&!PriceVerdict.endedByCheck(PriceVerdict.decode(PriceVerdict.encode(PriceVerdict.SAME,1,5000,"")),0)&&!PriceVerdict.endedByCheck(null,0),"only an UP check newer than the feed row ends a deal; a fresher feed row overrides it");
+  HistoryStore.H ea=new HistoryStore.H();ea.key="ea";ea.lastSeen=now;HistoryStore.H eb=new HistoryStore.H();eb.key="eb";eb.lastSeen=now;java.util.Set<String> ended=new java.util.HashSet<>(Arrays.asList("ea"));
+  check(FeedFilter.freshFirst(ea,eb,now,ended)>0&&FeedFilter.freshFirst(eb,ea,now,ended)<0,"a deal found ended by a live check sorts after fresh ones");
   System.out.println("Pipeline: "+pass+" passed, "+fail+" failed");if(fail>0)System.exit(1);
  }
 }
