@@ -110,6 +110,19 @@ jobs:
           grep -q 'if("발견".equals(name))' app/src/main/java/com/dealflash/app/MainActivity.java
           ! grep -q "h.spark" app/src/main/java/com/dealflash/app/MainActivity.java
 
+      - name: Apply v2.8.1 hotfix
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d dealflash-v281-hotfix/apply.py.b64 > /tmp/v281.py
+          cd dealflash_build_min
+          python3 /tmp/v281.py
+          grep -q "versionName '2.8.1'" app/build.gradle
+          grep -q "알림과 무관한 발견 신호" app/src/main/java/com/dealflash/app/MainActivity.java
+          grep -q "drop<threshold" app/src/main/java/com/dealflash/app/DealFlashMessagingService.java
+          grep -q "syncEligible" app/src/main/java/com/dealflash/app/HotDealStore.java
+          grep -q "/api/deals?signal=" app/src/main/java/com/dealflash/app/ServerSync.java
+
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
