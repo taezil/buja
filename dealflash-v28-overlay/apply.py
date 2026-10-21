@@ -48,7 +48,6 @@ s=s.replace('private static final String[] SORTS={"추천순","할인율 높은�
 s=s.replace('DataMigration.run(this);ServerSync.restoreDeals(this);NotificationHelper.ensureChannels(this);','DataMigration.run(this);ServerSync.restoreDeals(this);NotificationHelper.ensureChannels(this);PushManager.ensure(this);')
 s=s.replace('return "실시간 급락 · 시장가격 검증";','return "실시간 급락 · 자동 포착";')
 # Hero card: remove the entire method containing the literal, regardless of its method name.
-import re
 def remove_method_with_literal(src,literal):
     pos=src.find(literal)
     if pos<0:return src
