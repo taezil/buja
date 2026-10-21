@@ -165,12 +165,12 @@ jobs:
           grep -q "FCM is itself a fresh" dealflash_build_min/app/src/main/java/com/dealflash/app/DealFlashMessagingService.java
           grep -q "deals_sync_error" dealflash_build_min/app/src/main/java/com/dealflash/app/ServerSync.java
 
-      - name: Apply v2.9.2 feed and manual-scan patch
+      - name: Apply v2.9.3 feed schema and manual-scan patch
         shell: bash
         run: |
           set -euo pipefail
           python3 dealflash-v292-fix/apply.py
-          grep -q "versionName '2.9.2'" dealflash_build_min/app/build.gradle
+          grep -q "versionName '2.9.3'" dealflash_build_min/app/build.gradle
           grep -q 'startsWith("fcurl:")' dealflash_build_min/app/src/main/java/com/dealflash/app/ProductIdentity.java
           grep -q "manualScanAndRefresh" dealflash_build_min/app/src/main/java/com/dealflash/app/ServerSync.java
           grep -q 'last_drop_rate' dealflash_build_min/app/src/main/java/com/dealflash/app/ServerSync.java
