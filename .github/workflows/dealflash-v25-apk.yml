@@ -1,8 +1,8 @@
-name: DealFlash v2.7 Preview APK
+name: DealFlash v2.8 Alpha2 APK
 
 on:
   push:
-    branches: [dealflash-v27-run]
+    branches: [dealflash-v28-dev]
   pull_request:
   workflow_dispatch:
 
@@ -122,6 +122,17 @@ jobs:
           grep -q "지금 가장 강한 딜" app/src/main/java/com/dealflash/app/MainActivity.java
           grep -q "thresholdSyncOk" app/src/main/java/com/dealflash/app/ServerSync.java
 
+      - name: Apply v2.8 alpha2 overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 dealflash-v28-overlay/apply.py
+          grep -q "versionName '2.8.0-alpha2'" dealflash_build_min/app/build.gradle
+          grep -q "class DealFlashMessagingService" dealflash_build_min/app/src/main/java/com/dealflash/app/DealFlashMessagingService.java
+          grep -q "PushManager.ensure" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java
+          ! grep -q "지금 가장 강한 딜" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java
+          grep -q "com.dealflash.app" dealflash_build_min/app/google-services.json
+
       - name: Run Java identity and pipeline tests
         working-directory: dealflash_build_min
         shell: bash
@@ -130,10 +141,7 @@ jobs:
           SRC=app/src/main/java/com/dealflash/app
           OUT=$(mktemp -d)
           if [[ -f tests/java/IdentityTests.java && -f tests/java/PipelineTests.java ]]; then
-            javac -proc:none -encoding UTF-8 -d "$OUT" \
-              $(find tests/stubs -name '*.java') \
-              $SRC/ProductIdentity.java $SRC/ProductLinks.java $SRC/MarketComparison.java $SRC/DataQuality.java $SRC/DealScore.java $SRC/DealUrgency.java $SRC/DealPipeline.java $SRC/PageScanner.java $SRC/ProductUX.java $SRC/ListingIntegrity.java $SRC/ProductUrl.java $SRC/HistoryStore.java $SRC/HotDealStore.java $SRC/DataMigration.java \
-              tests/java/IdentityTests.java tests/java/PipelineTests.java
+            javac -proc:none -encoding UTF-8 -d "$OUT"               $(find tests/stubs -name '*.java')               $SRC/ProductIdentity.java $SRC/ProductLinks.java $SRC/MarketComparison.java $SRC/DataQuality.java $SRC/DealScore.java $SRC/DealUrgency.java $SRC/DealPipeline.java $SRC/PageScanner.java $SRC/ProductUX.java $SRC/ListingIntegrity.java $SRC/ProductUrl.java $SRC/HistoryStore.java $SRC/HotDealStore.java $SRC/DataMigration.java               tests/java/IdentityTests.java tests/java/PipelineTests.java
             java -Dfile.encoding=UTF-8 -cp "$OUT" com.dealflash.app.IdentityTests
             java -Dfile.encoding=UTF-8 -cp "$OUT" com.dealflash.app.PipelineTests
           else
@@ -149,29 +157,33 @@ jobs:
             yes | "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" >/dev/null
           fi
 
-      - name: Build and verify preview APK
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build Firebase preview APK
         working-directory: dealflash_build_min
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x build-apk.sh
-          ANDROID_HOME="$ANDROID_HOME" ./build-apk.sh preview
-          test -f build/manual-preview/DealFlash-v2.7.0-preview.apk
+          gradle --no-daemon :app:assembleDebug
+          test -f app/build/outputs/apk/debug/app-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk /tmp/DealFlash-v2.8.0-alpha2-preview.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose /tmp/DealFlash-v2.8.0-alpha2-preview.apk
 
       - name: Package exact source
         working-directory: dealflash_build_min
         shell: bash
         run: |
           set -euo pipefail
-          zip -qr /tmp/DealFlash-v2.7.0-source.zip . -x 'build/*' '.gradle/*' 'server-v26/node_modules/*' 'server-v26/dist/*'
+          zip -qr /tmp/DealFlash-v2.8.0-alpha2-source.zip . -x 'build/*' '.gradle/*' 'app/build/*' 'server-v26/node_modules/*' 'server-v26/dist/*'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.7.0-preview-apk
-          path: dealflash_build_min/build/manual-preview/DealFlash-v2.7.0-preview.apk
+          name: DealFlash-v2.8.0-alpha2-preview-apk
+          path: /tmp/DealFlash-v2.8.0-alpha2-preview.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.7.0-source
-          path: /tmp/DealFlash-v2.7.0-source.zip
-
+          name: DealFlash-v2.8.0-alpha2-source
+          path: /tmp/DealFlash-v2.8.0-alpha2-source.zip
