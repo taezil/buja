@@ -173,6 +173,7 @@ jobs:
           grep -q "versionName '2.9.2'" dealflash_build_min/app/build.gradle
           grep -q 'startsWith("fcurl:")' dealflash_build_min/app/src/main/java/com/dealflash/app/ProductIdentity.java
           grep -q "manualScanAndRefresh" dealflash_build_min/app/src/main/java/com/dealflash/app/ServerSync.java
+          grep -q 'last_drop_rate' dealflash_build_min/app/src/main/java/com/dealflash/app/ServerSync.java
 
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
