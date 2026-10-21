@@ -1,4 +1,4 @@
-name: DealFlash v2.8.2 APK + Server v2.8.1
+name: DealFlash v2.8.2 APK
 
 on:
   push:
@@ -121,18 +121,6 @@ jobs:
           grep -q "drop<threshold" app/src/main/java/com/dealflash/app/DealFlashMessagingService.java
           grep -q 'auth_token' app/src/main/java/com/dealflash/app/ServerSync.java
           grep -q "drop<localThreshold" app/src/main/java/com/dealflash/app/ServerSync.java
-
-      - name: Apply Server v2.8.1 identity dedupe fix
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd dealflash_build_min
-          python3 ../dealflash-v283-server-fix/apply.py
-          node --check server-v26/src/index.js
-          grep -q "const VERSION='2.8.1'" server-v26/src/index.js
-          grep -q "cleanupLegacyIdentity" server-v26/src/index.js
-          grep -q "fallcentStableIdentity" server-v26/src/index.js
-          grep -q '"*/5 * * * *"' server-v26/wrangler.jsonc
 
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
