@@ -101,7 +101,7 @@ jobs:
         run: |
           set -euo pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          yes | "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" >/dev/null
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" >/dev/null
 
       - name: Build v2.8 alpha2 APK
         working-directory: dealflash_build_min
