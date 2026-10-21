@@ -1,4 +1,4 @@
-name: DealFlash v2.8.4 APK
+name: DealFlash v2.8.5 APK
 
 on:
   push:
@@ -136,6 +136,16 @@ jobs:
           grep -q "Local user choice is authoritative" app/src/main/java/com/dealflash/app/ServerSync.java
           grep -q "private static final int MAX = 500" app/src/main/java/com/dealflash/app/HistoryStore.java
           grep -q "while(ps.size()>240)" app/src/main/java/com/dealflash/app/DealScore.java
+
+      - name: Apply v2.8.5 refresh and back-navigation patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 dealflash-v285-refresh/apply.py
+          grep -q "versionName '2.8.5'" dealflash_build_min/app/build.gradle
+          grep -q "refreshFromPull" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java
+          grep -q "한 번 더 누르면 앱이 종료됩니다" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java
+          grep -q "now-lastForegroundSync>=60_000L" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java
 
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
