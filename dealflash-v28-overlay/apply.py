@@ -75,6 +75,13 @@ while '지금 가장 강한 딜' in s:
     old_s=s;s=remove_method_with_literal(s,'지금 가장 강한 딜')
     if s==old_s:break
 s=s.replace('        addHeroDeal();\n','').replace('        addHeroDeal(name);\n','')
+
+# Remove the remaining v2.7 hero insertion point. The hero method itself was removed above.
+s=s.replace('        if("급락".equals(name)||"발견".equals(name)){heroBox=buildHero();body.addView(heroBox);}\n','')
+if 'private int signalCount(HistoryStore.H x)' not in s:
+    helper='''    private int signalCount(HistoryStore.H x){if(x==null||x.signals==null||x.signals.trim().isEmpty())return 0;java.util.LinkedHashSet<String> set=new java.util.LinkedHashSet<>();for(String sig:x.signals.split("\\\\|")){sig=sig.trim();if(!sig.isEmpty()&&!"추천".equals(sig))set.add(sig);}return set.size();}\n'''
+    anchor='    private String sourceLabel(HistoryStore.H x)'
+    if anchor in s:s=s.replace(anchor,helper+anchor)
 # Simplify list badges: remove urgency/confidence chips.
 s=s.replace('TextView name,price,bigHot,discount,urgent,confidence,categoryLine,signalLine,ref,saving,meta,heart,trendLabel;','TextView name,price,bigHot,discount,categoryLine,signalLine,ref,saving,meta,heart,trendLabel;')
 s=s.replace('h.badges=row();h.bigHot=badge("🔥 BIG HOT DEAL",Color.WHITE,accent);h.discount=badge("",accent,accentSoft);h.urgent=badge("",Color.WHITE,accent);h.confidence=badge("",muted,soft);h.badges.addView(h.bigHot);h.badges.addView(space(6,1));h.badges.addView(h.discount);h.badges.addView(space(6,1));h.badges.addView(h.urgent);h.badges.addView(space(6,1));h.badges.addView(h.confidence);c.addView(h.badges);',
