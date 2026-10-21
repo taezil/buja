@@ -1,0 +1,43 @@
+--- a/app/src/main/java/com/dealflash/app/ServerSync.java
++++ b/app/src/main/java/com/dealflash/app/ServerSync.java
+@@ -44,8 +44,9 @@
+         final Context app=c.getApplicationContext();
+         if(fcmToken==null||fcmToken.length()<20){if(done!=null)done.run();return;}
+         new Thread(()->{String state="failed";try{
+-            JSONObject o=new JSONObject();o.put("device_id",DeviceIdentity.id(app));o.put("auth_token",DeviceIdentity.authToken(app));o.put("fcm_token",fcmToken);o.put("alert_threshold",ScannerPrefs.threshold(app));o.put("app_version","2.8.0-alpha2");
+-            JSONObject r=postJson("/api/v1/device/register",o);
++            JSONObject o=new JSONObject();o.put("device_id",DeviceIdentity.id(app));o.put("fcm_token",fcmToken);o.put("alert_threshold",ScannerPrefs.threshold(app));o.put("app_version","2.8.0-alpha2");
++            JSONObject r=postJson("/api/v1/devices/register",o);
++            DeviceIdentity.acceptServerCredentials(app,r.optString("device_id",""),r.optString("device_token",""));
+             ScannerPrefs.threshold(app,r.optInt("alert_threshold",ScannerPrefs.threshold(app)));
+             state="saved";app.getSharedPreferences(PREF,0).edit().putBoolean("device_registered",true).putString("push_state",r.optBoolean("push_ready",false)?"ready":"registered").apply();
+         }catch(Exception ignored){}finally{app.getSharedPreferences(PREF,0).edit().putString("threshold_sync_state",state).apply();if(done!=null){try{new android.os.Handler(android.os.Looper.getMainLooper()).post(done);}catch(Exception ignored){done.run();}}}}).start();
+@@ -126,7 +127,7 @@
+         new Thread(()->{
+             try{
+                 android.content.SharedPreferences p=c.getSharedPreferences(PREF,0);long after=p.getLong("alert_event_cursor",0);
+-                JSONObject root=authGetJson(c,"/api/v1/alerts?after_id="+after+"&limit=50",8000,8000);JSONArray a=root.optJSONArray("items");long max=after;
++                JSONObject root=authGetJson(c,"/api/v1/device/events?after="+after+"&limit=50",8000,8000);JSONArray a=root.optJSONArray("items");long max=after;
+                 if(a!=null)for(int i=0;i<a.length();i++){
+                     JSONObject o=a.optJSONObject(i);if(o==null)continue;long eventId=o.optLong("event_id",0);max=Math.max(max,eventId);
+                     String source=o.optString("source","FALLCENT"),key=o.optString("product_key",""),url=o.optString("product_url","");if(key.isEmpty()||url.isEmpty())continue;
+--- a/app/src/main/java/com/dealflash/app/DeviceIdentity.java
++++ b/app/src/main/java/com/dealflash/app/DeviceIdentity.java
+@@ -10,11 +10,15 @@
+     private static final String PREF="dealflash_device_identity_v1";
+     private DeviceIdentity(){}
+     public static String id(Context c){
+-        android.content.SharedPreferences p=c.getSharedPreferences(PREF,0);String v=p.getString("device_id","");
++        android.content.SharedPreferences p=c.getSharedPreferences(PREF,0);String server=p.getString("server_device_id","");if(server!=null&&server.length()>=12)return server;String v=p.getString("device_id","");
+         if(v==null||v.length()<12){v="android:"+UUID.randomUUID().toString();p.edit().putString("device_id",v).apply();}return v;
+     }
+     public static String authToken(Context c){
+-        android.content.SharedPreferences p=c.getSharedPreferences(PREF,0);String v=p.getString("auth_token","");
++        android.content.SharedPreferences p=c.getSharedPreferences(PREF,0);String server=p.getString("server_auth_token","");if(server!=null&&server.length()>=24)return server;String v=p.getString("auth_token","");
+         if(v==null||v.length()<24){byte[] b=new byte[32];new SecureRandom().nextBytes(b);v=Base64.encodeToString(b,Base64.URL_SAFE|Base64.NO_WRAP|Base64.NO_PADDING);p.edit().putString("auth_token",v).apply();}return v;
+     }
++    public static void acceptServerCredentials(Context c,String deviceId,String token){
++        if(token==null||token.length()<24)return;android.content.SharedPreferences.Editor e=c.getSharedPreferences(PREF,0).edit().putString("server_auth_token",token);
++        if(deviceId!=null&&deviceId.length()>=12)e.putString("server_device_id",deviceId);e.apply();
++    }
+ }
