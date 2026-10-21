@@ -1,4 +1,4 @@
-name: DealFlash v2.8 Alpha2 APK
+name: DealFlash v2.8.1 APK
 
 on:
   push:
@@ -93,6 +93,21 @@ jobs:
           test -f app/google-services.json
           printf 'android.useAndroidX=true\n' > gradle.properties
 
+      - name: Apply v2.8.1 stability patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat dealflash-v281-fix/p{00,01,02}.b64 > /tmp/v281.patch.gz.b64
+          base64 -d /tmp/v281.patch.gz.b64 > /tmp/v281.patch.gz
+          echo "c76a5e0befacb8a433df8852db3d075c5b90be6649bb25a5aa8d02cd86b24d1c  /tmp/v281.patch.gz" | sha256sum -c -
+          gzip -dc /tmp/v281.patch.gz > /tmp/v281.patch
+          cd dealflash_build_min
+          patch -p1 --batch < /tmp/v281.patch
+          grep -q "versionName '2.8.1'" app/build.gradle
+          grep -q "syncDiscovery" app/src/main/java/com/dealflash/app/ServerSync.java
+          grep -q "bootstrap=after==0" app/src/main/java/com/dealflash/app/ServerSync.java
+          ! grep -q "h.spark" app/src/main/java/com/dealflash/app/MainActivity.java
+
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -105,7 +120,7 @@ jobs:
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" >/dev/null
 
-      - name: Build v2.8 alpha2 APK
+      - name: Build v2.8.1 APK
         working-directory: dealflash_build_min
         shell: bash
         run: |
@@ -116,23 +131,23 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$APK" | tee /tmp/badging.txt
           grep -q "package: name='com.dealflash.app'" /tmp/badging.txt
-          cp "$APK" /tmp/DealFlash-v2.8.0-alpha2.apk
-          sha256sum /tmp/DealFlash-v2.8.0-alpha2.apk
+          cp "$APK" /tmp/DealFlash-v2.8.1.apk
+          sha256sum /tmp/DealFlash-v2.8.1.apk
 
       - name: Package exact source
         working-directory: dealflash_build_min
         shell: bash
         run: |
           set -euo pipefail
-          zip -qr /tmp/DealFlash-v2.8.0-alpha2-source.zip . \
+          zip -qr /tmp/DealFlash-v2.8.1-source.zip . \
             -x 'app/build/*' '.gradle/*' 'server-v26/node_modules/*' 'server-v26/dist/*'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.8.0-alpha2-apk
-          path: /tmp/DealFlash-v2.8.0-alpha2.apk
+          name: DealFlash-v2.8.1-apk
+          path: /tmp/DealFlash-v2.8.1.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.8.0-alpha2-source
-          path: /tmp/DealFlash-v2.8.0-alpha2-source.zip
+          name: DealFlash-v2.8.1-source
+          path: /tmp/DealFlash-v2.8.1-source.zip
