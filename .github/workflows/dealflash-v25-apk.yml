@@ -91,6 +91,7 @@ jobs:
           grep -q "PushBootstrap.start" app/src/main/java/com/dealflash/app/MainActivity.java
           ! grep -q "지금 가장 강한 딜" app/src/main/java/com/dealflash/app/MainActivity.java
           test -f app/google-services.json
+          printf 'android.useAndroidX=true\n' > gradle.properties
 
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
