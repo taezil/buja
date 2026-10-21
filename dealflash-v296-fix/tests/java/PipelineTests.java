@@ -70,6 +70,9 @@ public class PipelineTests {
   HistoryStore.H q1=new HistoryStore.H();q1.source="FALLCENT";q1.key="fcfp:q1";q1.title="생수 2L 6개";q1.last=3000;
   HistoryStore.H q2=new HistoryStore.H();q2.source="FALLCENT";q2.key="fcfp:q2";q2.title="생수 2L 12개";q2.last=5000;
   check(ProductLinks.group(Arrays.asList(q1,q2)).size()==2,"quantity variants remain separate feed cards");
+  HistoryStore.H fr1=new HistoryStore.H();fr1.lastSeen=now-5*60*1000L;HistoryStore.H st1=new HistoryStore.H();st1.lastSeen=now-31*60*1000L;HistoryStore.H un=new HistoryStore.H();
+  check(!FeedFilter.isPriceStale(fr1,now)&&FeedFilter.isPriceStale(st1,now)&&!FeedFilter.isPriceStale(un,now),"price older than 30 min is flagged possibly ended; unknown time is not");
+  java.util.List<HistoryStore.H> ord=new java.util.ArrayList<>(Arrays.asList(st1,fr1));ord.sort((o1,o2)->FeedFilter.freshFirst(o1,o2,now));check(ord.get(0)==fr1,"freshly confirmed prices sort before possibly-ended ones");
   System.out.println("Pipeline: "+pass+" passed, "+fail+" failed");if(fail>0)System.exit(1);
  }
 }
