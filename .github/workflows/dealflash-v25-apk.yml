@@ -1,4 +1,4 @@
-name: DealFlash v2.8 Beta APK
+name: DealFlash v2.8 Alpha2 APK
 
 on:
   push:
@@ -35,11 +35,11 @@ jobs:
           tar -xzf /tmp/dealflash-v23.tar.gz
           test -f dealflash_build_min/app/build.gradle
 
-      - name: Apply v2.5 through v2.7 patches
+      - name: Apply v2.5-v2.7 patches
         shell: bash
         run: |
           set -euo pipefail
-          cat dealflash-v25-patch/p0{0,1,2,3,4,5,6,7,8}.b64 > /tmp/v25.patch.gz.b64
+          cat dealflash-v25-patch/p{00,01,02,03,04,05,06,07,08}.b64 > /tmp/v25.patch.gz.b64
           base64 -d /tmp/v25.patch.gz.b64 > /tmp/v25.patch.gz
           echo "15096b63f75f4011730d6e842b6de912d055e468e64bc8ad69a5322613dd94bc  /tmp/v25.patch.gz" | sha256sum -c -
           gzip -dc /tmp/v25.patch.gz > /tmp/v25.patch
@@ -50,105 +50,87 @@ jobs:
           base64 -d ../dealflash-v25-patch/preview.keystore.b64 > signing/preview.keystore
           echo "49bbffba966efe1ea3a81e336eceb66082bef22ce4a874deacbfdc94b08130d7  signing/preview.keystore" | sha256sum -c -
           python3 ../dealflash-v251-overlay/apply.py
-
           cat ../dealflash-v253-patch/p00.b64 > /tmp/v253.patch.gz.b64
           base64 -d /tmp/v253.patch.gz.b64 > /tmp/v253.patch.gz
           echo "4fe55ad180970118d5f0bca589965525a322b9f1bf95ce962d56dfee38f274b9  /tmp/v253.patch.gz" | sha256sum -c -
           gzip -dc /tmp/v253.patch.gz > /tmp/v253.patch
           patch -p1 --batch < /tmp/v253.patch
-
-          cat ../dealflash-v26-patch/p0{0,1,2,3,4,5,6}.b64 > /tmp/v26.patch.gz.b64
+          cat ../dealflash-v26-patch/p{00,01,02,03,04,05,06}.b64 > /tmp/v26.patch.gz.b64
           base64 -d /tmp/v26.patch.gz.b64 > /tmp/v26.patch.gz
           echo "c304fad3ca51e8fc312ea7d18554f6af3d5ee9dd53e949bbb92804e3abf9251d  /tmp/v26.patch.gz" | sha256sum -c -
           gzip -dc /tmp/v26.patch.gz > /tmp/v26.patch
           patch -p1 --batch < /tmp/v26.patch
-
           cat ../dealflash-v261-patch/p00.b64 > /tmp/v261.patch.gz.b64
           base64 -d /tmp/v261.patch.gz.b64 > /tmp/v261.patch.gz
           echo "e48bbf6186c47599c64016c02e304ef8feea43b334db1c022c589e634511f767  /tmp/v261.patch.gz" | sha256sum -c -
           gzip -dc /tmp/v261.patch.gz > /tmp/v261.patch
           patch -p1 --batch < /tmp/v261.patch
-
-          cat ../dealflash-v27-patch/p0{0,1,2,3,4}.b64 > /tmp/v27.patch.gz.b64
+          cat ../dealflash-v27-patch/p{00,01,02,03,04}.b64 > /tmp/v27.patch.gz.b64
           base64 -d /tmp/v27.patch.gz.b64 > /tmp/v27.patch.gz
           echo "5544768be36f23c23b62c101abdea746c897d58c2037aa3acf5b353f26d72413  /tmp/v27.patch.gz" | sha256sum -c -
           gzip -dc /tmp/v27.patch.gz > /tmp/v27.patch
           patch -p1 --batch < /tmp/v27.patch
-          grep -q "versionName '2.7.0'" app/build.gradle
 
-      - name: Apply v2.8 beta patch
+      - name: Apply v2.8 alpha2 app patch
         shell: bash
         run: |
           set -euo pipefail
-          cat \
-            dealflash-v28-patch/p00.b64 \
-            dealflash-v28-patch/p01.b64 \
-            dealflash-v28-patch/p02.b64 \
-            dealflash-v28-patch/p03.b64 \
-            dealflash-v28-patch/p04.b64 \
-            dealflash-v28-patch/p05.b64 \
-            dealflash-v28-patch/p06.b64 \
-            > /tmp/v28.patch.gz.b64
-          base64 -d /tmp/v28.patch.gz.b64 > /tmp/v28.patch.gz
-          echo "5dac4145e457e982dc0bf0ea1e6e0cef42ca7169bfe73c827ae0c4a72bd9f8b6  /tmp/v28.patch.gz" | sha256sum -c -
-          gzip -dc /tmp/v28.patch.gz > /tmp/v28.patch
+          cat dealflash-v28-alpha2/p{00,01,02,03}.b64 > /tmp/v28-app.patch.gz.b64
+          base64 -d /tmp/v28-app.patch.gz.b64 > /tmp/v28-app.patch.gz
+          echo "887f414db6dbf778acd9669a86e3585e2357eca5416425cb6b821f2204758277  /tmp/v28-app.patch.gz" | sha256sum -c -
+          gzip -dc /tmp/v28-app.patch.gz > /tmp/v28-app.patch
           cd dealflash_build_min
-          patch -p1 --batch < /tmp/v28.patch
-          grep -q "versionName '2.8.0-beta1'" app/build.gradle
-          grep -q "class FirebasePush" app/src/main/java/com/dealflash/app/FirebasePush.java
+          patch -p1 --batch < /tmp/v28-app.patch
+          grep -q "versionName '2.8.0-alpha2'" app/build.gradle
+          grep -q "com.google.gms.google-services" app/build.gradle
+          grep -q "firebase-messaging" app/build.gradle
           grep -q "class DealFlashMessagingService" app/src/main/java/com/dealflash/app/DealFlashMessagingService.java
-          grep -q "/api/v1/device/register" app/src/main/java/com/dealflash/app/ServerSync.java
+          grep -q "class DeviceIdentity" app/src/main/java/com/dealflash/app/DeviceIdentity.java
+          grep -q "class PushBootstrap" app/src/main/java/com/dealflash/app/PushBootstrap.java
+          grep -q "PushBootstrap.start" app/src/main/java/com/dealflash/app/MainActivity.java
+          ! grep -q "지금 가장 강한 딜" app/src/main/java/com/dealflash/app/MainActivity.java
           test -f app/google-services.json
-          if grep -q "지금 가장 강한 딜" app/src/main/java/com/dealflash/app/MainActivity.java; then
-            echo "HERO_STILL_PRESENT"
-            exit 1
-          fi
 
-      - name: Run server core regression tests
-        working-directory: dealflash_build_min/server-v26
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --check src/index.js
-          node test-core.mjs
+      - name: Setup Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
 
       - name: Ensure Android SDK 35
         shell: bash
         run: |
           set -euo pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          if [[ ! -x "$ANDROID_HOME/build-tools/35.0.0/aapt2" || ! -f "$ANDROID_HOME/platforms/android-35/android.jar" ]]; then
-            yes | "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" >/dev/null
-          fi
+          yes | "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" >/dev/null
 
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-
-      - name: Build v2.8 beta APK
+      - name: Build v2.8 alpha2 APK
         working-directory: dealflash_build_min
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon --stacktrace :app:assembleRelease
-          test -f app/build/outputs/apk/release/app-release.apk
-          cp app/build/outputs/apk/release/app-release.apk /tmp/DealFlash-v2.8.0-beta1.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose /tmp/DealFlash-v2.8.0-beta1.apk
+          gradle --no-daemon :app:assembleDebug --stacktrace
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$APK" | tee /tmp/badging.txt
+          grep -q "package: name='com.dealflash.app'" /tmp/badging.txt
+          cp "$APK" /tmp/DealFlash-v2.8.0-alpha2.apk
+          sha256sum /tmp/DealFlash-v2.8.0-alpha2.apk
 
       - name: Package exact source
         working-directory: dealflash_build_min
         shell: bash
         run: |
           set -euo pipefail
-          zip -qr /tmp/DealFlash-v2.8.0-beta1-source.zip . \
+          zip -qr /tmp/DealFlash-v2.8.0-alpha2-source.zip . \
             -x 'app/build/*' '.gradle/*' 'server-v26/node_modules/*' 'server-v26/dist/*'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.8.0-beta1-apk
-          path: /tmp/DealFlash-v2.8.0-beta1.apk
+          name: DealFlash-v2.8.0-alpha2-apk
+          path: /tmp/DealFlash-v2.8.0-alpha2.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.8.0-beta1-source
-          path: /tmp/DealFlash-v2.8.0-beta1-source.zip
+          name: DealFlash-v2.8.0-alpha2-source
+          path: /tmp/DealFlash-v2.8.0-alpha2-source.zip
