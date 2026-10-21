@@ -177,7 +177,7 @@ jobs:
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" >/dev/null
 
-      - name: Build v2.9.0 APK
+      - name: Build v2.9.1 APK
         working-directory: dealflash_build_min
         shell: bash
         run: |
@@ -188,8 +188,8 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$APK" | tee /tmp/badging.txt
           grep -q "package: name='com.dealflash.app'" /tmp/badging.txt
-          cp "$APK" /tmp/DealFlash-v2.8.4.apk
-          sha256sum /tmp/DealFlash-v2.9.0.apk
+          cp "$APK" /tmp/DealFlash-v2.9.1.apk
+          sha256sum /tmp/DealFlash-v2.9.1.apk
 
       - name: Package exact source
         working-directory: dealflash_build_min
@@ -202,7 +202,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: DealFlash-v2.9.0-apk
-          path: /tmp/DealFlash-v2.9.0.apk
+          path: /tmp/DealFlash-v2.9.1.apk
 
       - uses: actions/upload-artifact@v4
         with:
