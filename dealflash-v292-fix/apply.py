@@ -27,20 +27,8 @@ p.write_text(s)
 
 p=Path("dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java")
 s=p.read_text()
-old='''           if(ServerState.active(this)){
-               lastForegroundSync=System.currentTimeMillis();
-               ServerSync.refreshDeals(this,()->{
-                   manualRefreshInFlight=false;
-                   reload();
-                   Toast.makeText(this,"최신 상품으로 새로고침했어요",Toast.LENGTH_SHORT).show();
-               });'''
-new='''           if(ServerState.active(this)){
-               lastForegroundSync=System.currentTimeMillis();
-               ServerSync.manualScanAndRefresh(this,()->{
-                   manualRefreshInFlight=false;
-                   reload();
-                   Toast.makeText(this,"서버 즉시 스캔을 완료했어요",Toast.LENGTH_SHORT).show();
-               });'''
+old='ServerSync.refreshDeals(this,()->{manualRefreshInFlight=false;reload();Toast.makeText(this,"최신 상품으로 새로고침했어요",Toast.LENGTH_SHORT).show();});'
+new='ServerSync.manualScanAndRefresh(this,()->{manualRefreshInFlight=false;reload();Toast.makeText(this,"서버 즉시 스캔을 완료했어요",Toast.LENGTH_SHORT).show();});'
 if old not in s: raise SystemExit("pull refresh anchor missing")
 s=s.replace(old,new)
 # Empty messages should distinguish a completed empty result from an endless loading state.
