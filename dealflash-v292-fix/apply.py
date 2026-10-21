@@ -25,6 +25,15 @@ s=s.replace('public static void refreshDeals(Context c,Runnable done){syncServer
     }''')
 p.write_text(s)
 
+# Server /api/deals schema compatibility: server emits current_price + last_drop_rate and pipe-delimited signals.
+p=Path("dealflash_build_min/app/src/main/java/com/dealflash/app/ServerSync.java")
+q=p.read_text()
+q=q.replace('double price=o.optDouble("price",o.optDouble("current_price",0)),ref=o.optDouble("reference_price",0);','double price=o.optDouble("current_price",o.optDouble("price",0)),ref=o.optDouble("reference_price",0);')
+q=q.replace('int drop=o.optInt("drop_rate",o.optInt("drop_pct",0));','int drop=o.optInt("last_drop_rate",o.optInt("drop_rate",o.optInt("drop_pct",0)));')
+# Pipe-delimited signal strings are the production server contract; normalize before any JSONArray-only path.
+q=q.replace('JSONArray sig=o.optJSONArray("signals");', 'JSONArray sig=o.optJSONArray("signals"); if(sig==null){String rawSig=o.optString("signals","");if(!rawSig.isEmpty()){sig=new JSONArray();for(String part:rawSig.split("\\\\|")){String v=part.trim();if(!v.isEmpty())sig.put(v);}}}')
+p.write_text(q)
+
 p=Path("dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java")
 s=p.read_text()
 old='ServerSync.refreshDeals(this,()->{manualRefreshInFlight=false;reload();Toast.makeText(this,"최신 상품으로 새로고침했어요",Toast.LENGTH_SHORT).show();});'
@@ -36,5 +45,5 @@ s=s.replace('if("발견".equals(screen))return "서버의 인기·타이밍 신�
 p.write_text(s)
 
 g=Path("dealflash_build_min/app/build.gradle")
-t=g.read_text().replace("versionCode 42","versionCode 43").replace("versionName '2.9.1'","versionName '2.9.2'")
+t=g.read_text().replace("versionCode 42","versionCode 44").replace("versionName '2.9.1'","versionName '2.9.3'")
 g.write_text(t)
