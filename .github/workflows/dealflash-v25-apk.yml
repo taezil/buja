@@ -81,6 +81,7 @@ jobs:
           gzip -dc /tmp/v28-app.patch.gz > /tmp/v28-app.patch
           cd dealflash_build_min
           patch -p1 --batch < /tmp/v28-app.patch
+          patch -p1 --batch < ../dealflash-v28-alpha2/endpoint-fix.patch
           grep -q "versionName '2.8.0-alpha2'" app/build.gradle
           grep -q "com.google.gms.google-services" app/build.gradle
           grep -q "firebase-messaging" app/build.gradle
