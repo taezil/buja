@@ -77,10 +77,15 @@ public class MainActivity extends Activity {
         setContentView(root);
     }
 
+    private static final int[] ALERT_VIEW_MINS={20,30,40,50,60,70,80};
+    /** 알림 tab: only a view filter chosen by the user; the push threshold stays in 설정. */
+    private int alertViewMin(){try{return getSharedPreferences("alert_view",0).getInt("min",ScannerPrefs.threshold(this));}catch(Throwable t){return 50;}}
+    private void alertViewMin(int v){try{getSharedPreferences("alert_view",0).edit().putInt("min",v).apply();}catch(Throwable ignored){}}
     private void buildNav(){
         bottomNav.removeAllViews();
         addNav("⚡","급락",()->{favoritesOnly=false;showList("급락");});
         addNav("✨","발견",()->{favoritesOnly=false;showList("발견");});
+        addNav("🔔","알림",()->{favoritesOnly=false;showList("알림");});
         addNav("⌕","검색",()->{favoritesOnly=false;showList("검색");});
         addNav("♡","보관",()->{favoritesOnly=false;showList("보관");});
         addNav("⚙","설정",this::settings);
@@ -109,6 +114,11 @@ public class MainActivity extends Activity {
             HorizontalScrollView signalScroll=new HorizontalScrollView(this);signalScroll.setHorizontalScrollBarEnabled(false);LinearLayout signalChips=row();
             for(String sig:SIGNAL_FILTERS)signalChips.addView(chipSlot(sig,sig.equals(signalFilter),()->{signalFilter=sig;persist();showList(screen);}));
             signalScroll.addView(signalChips);body.addView(signalScroll);
+        }
+        if("알림".equals(name)){
+            HorizontalScrollView minScroll=new HorizontalScrollView(this);minScroll.setHorizontalScrollBarEnabled(false);LinearLayout minChips=row();
+            for(int pv:ALERT_VIEW_MINS)minChips.addView(chipSlot(pv+"%+",pv==alertViewMin(),()->{alertViewMin(pv);showList("알림");}));
+            minScroll.addView(minChips);body.addView(minScroll);
         }
         HorizontalScrollView scroll=new HorizontalScrollView(this);scroll.setHorizontalScrollBarEnabled(false);LinearLayout cats=row();
         for(String nameCat:CATS)cats.addView(chipSlot(nameCat,nameCat.equals(category),()->{category=nameCat;persist();showList(screen);}));
@@ -171,14 +181,14 @@ public class MainActivity extends Activity {
         int pos=list.getFirstVisiblePosition(),top=list.getChildCount()>0?list.getChildAt(0).getTop():0;
         hot.clear();for(HotDealStore.Hot d:hotSnapshot)hot.put(d.key,d);
         shown.clear();evidence.clear();urgency.clear();long now=System.currentTimeMillis();
-        FeedFilter.Params fp=new FeedFilter.Params();fp.screen=screen;fp.category=category;fp.signal=signalFilter;fp.query=query;fp.minDrop=minDrop;fp.minSaving=minSaving;
+        FeedFilter.Params fp=new FeedFilter.Params();fp.screen=screen;fp.category=category;fp.signal=signalFilter;fp.query=query;fp.minDrop="알림".equals(screen)?Math.max(minDrop,alertViewMin()):minDrop;fp.minSaving=minSaving;
         fp.evidenceOnly=evidenceOnly;fp.favoritesOnly=favoritesOnly;fp.hotKeys=hot.keySet();fp.favorite=this::favorite;fp.categoryOf=this::categoryOf;
         for(HistoryStore.H x:FeedFilter.cards(history.values(),fp,now,evidence)){urgency.put(x.key,DealUrgency.score(x,evidence.get(x.key),now));shown.add(x);}
         final long sortNow=System.currentTimeMillis();final boolean freshFirstTab=!"보관".equals(screen);final java.util.HashSet<String> endedKeys=new java.util.HashSet<>();if(freshFirstTab)for(HistoryStore.H sh:shown)if(PriceCheck.endedByCheck(this,sh))endedKeys.add(sh.key);shown.sort((a,b)->{if(freshFirstTab){int fr=FeedFilter.freshFirst(a,b,sortNow,endedKeys);if(fr!=0)return fr;}DealScore.Evidence x=evidence.get(a.key),y=evidence.get(b.key);int ux=urgency.get(a.key),uy=urgency.get(b.key),c=0;switch(sort){case 1:c=Integer.compare(b.declaredDiscountPct,a.declaredDiscountPct);break;case 2:c=Double.compare(y.count>=3?y.saving:0,x.count>=3?x.saving:0);break;case 3:c=Long.compare(b.firstSeen,a.firstSeen);break;case 4:c=Integer.compare(signalCount(b),signalCount(a));break;case 5:c=Double.compare(a.last,b.last);break;default:c=Integer.compare(uy,ux);if(c==0)c=Boolean.compare(y.errorCandidate,x.errorCandidate);if(c==0)c=Integer.compare(y.score,x.score);break;}if(c==0)c=Long.compare(b.firstSeen,a.firstSeen);return c==0?a.key.compareTo(b.key):c;});
-        String signalSuffix="발견".equals(screen)&&!"전체".equals(signalFilter)?" · "+signalFilter:"";String alertSuffix="급락".equals(screen)?" · 알림 "+ScannerPrefs.threshold(this)+"%+":"";
-        int variants=0;for(HistoryStore.H h:history.values())if(DataQuality.visible(h)&&now-h.lastSeen<=24L*60*60*1000)variants++;String tally=variants>shown.size()?"상품 "+shown.size()+"개 · 옵션 "+variants+"개":"현재 "+shown.size()+"개 포착";count.setText(shown.isEmpty()?emptyMessage():tally+signalSuffix+alertSuffix);adapter.notifyDataSetChanged();list.setSelectionFromTop(pos,top);
+        String signalSuffix="발견".equals(screen)&&!"전체".equals(signalFilter)?" · "+signalFilter:"";String alertSuffix="급락".equals(screen)?" · 푸시 "+ScannerPrefs.threshold(this)+"%+":"알림".equals(screen)?" · "+alertViewMin()+"% 이상 · 푸시 기준 "+ScannerPrefs.threshold(this)+"%":"";
+        String tally="현재 "+shown.size()+"개 포착";count.setText(shown.isEmpty()?emptyMessage():tally+signalSuffix+alertSuffix);adapter.notifyDataSetChanged();list.setSelectionFromTop(pos,top);
     }
-    private String emptyMessage(){if("보관".equals(screen))return "아직 보관한 상품이 없어요";if(!query.isEmpty())return "검색 결과가 없어요 · 다른 단어로 찾아보세요";String why=SyncDiag.oneLine(this);if("발견".equals(screen))return "현재 수집된 발견 신호가 없어요 · 아래로 당겨 즉시 스캔\n["+why+"]";return "현재 조건에 맞는 상품이 없어요 · 아래로 당겨 새로고침\n["+why+"]";}
+    private String emptyMessage(){if("보관".equals(screen))return "아직 보관한 상품이 없어요";if(!query.isEmpty())return "검색 결과가 없어요 · 다른 단어로 찾아보세요";String why=SyncDiag.oneLine(this);if("급락".equals(screen))return "최근 2시간 안에 "+FeedFilter.DROP_TAB_MIN+"% 이상 급락이 없어요 · 아래로 당겨 새로고침\n["+why+"]";if("알림".equals(screen))return "최근 24시간 중 "+alertViewMin()+"% 이상 상품이 없어요\n["+why+"]";if("발견".equals(screen))return "현재 수집된 발견 신호가 없어요 · 아래로 당겨 즉시 스캔\n["+why+"]";return "현재 조건에 맞는 상품이 없어요 · 아래로 당겨 새로고침\n["+why+"]";}
     private DealScore.Evidence evaluate(HistoryStore.H x){HistoryStore.H prior=new HistoryStore.H();prior.observations=x.observations;prior.last=x.prevPrice;prior.lastSeen=x.prevSeen;return DealScore.evaluate(prior,x.last,x.declaredDiscountPct,x.lastSeen);}
 
     private class Holder {ImageView image;TextView name,price,bigHot,discount,categoryLine,ref,meta,heart;FrameLayout container;}

@@ -79,6 +79,12 @@ public class PipelineTests {
   check(PriceVerdict.endedByCheck(pv,900)&&!PriceVerdict.endedByCheck(pv,2000)&&!PriceVerdict.endedByCheck(PriceVerdict.decode(PriceVerdict.encode(PriceVerdict.SAME,1,5000,"")),0)&&!PriceVerdict.endedByCheck(null,0),"only an UP check newer than the feed row ends a deal; a fresher feed row overrides it");
   HistoryStore.H ea=new HistoryStore.H();ea.key="ea";ea.lastSeen=now;HistoryStore.H eb=new HistoryStore.H();eb.key="eb";eb.lastSeen=now;java.util.Set<String> ended=new java.util.HashSet<>(Arrays.asList("ea"));
   check(FeedFilter.freshFirst(ea,eb,now,ended)>0&&FeedFilter.freshFirst(eb,ea,now,ended)<0,"a deal found ended by a live check sorts after fresh ones");
+  check(FeedFilter.DROP_TAB_MIN==30&&FeedFilter.windowMs("급락")==2*3600_000L&&FeedFilter.windowMs("발견")==6*3600_000L&&FeedFilter.windowMs("알림")==DealsRepository.FRESH_MS,"tab thresholds/windows: 급락 30%+/2h, 발견 6h, 알림 24h");
+  HistoryStore.H w1=new HistoryStore.H();w1.key="fcfp:w1";w1.source="FALLCENT";w1.title="윈도우 테스트 상품 A 500g";w1.last=5000;w1.declaredDiscountPct=45;w1.trusted=true;w1.lastSeen=now-3*3600_000L;w1.firstSeen=w1.lastSeen;w1.url="https://fallcent.com/product/w1";
+  FeedFilter.Params wp=new FeedFilter.Params();wp.categoryOf=hh->"전체";
+  wp.screen="급락";int e1=FeedFilter.eligible(Arrays.asList(w1),wp,now).size();wp.screen="발견";int e2=FeedFilter.eligible(Arrays.asList(w1),wp,now).size();wp.screen="알림";int e3=FeedFilter.eligible(Arrays.asList(w1),wp,now).size();
+  check(e1==0&&e2==1&&e3==1,"3h-old sighting: not in 급락 (2h), still in 발견 (6h) and 알림 (24h)");
+  w1.declaredDiscountPct=25;w1.lastSeen=now-60_000L;wp.screen="급락";check(FeedFilter.eligible(Arrays.asList(w1),wp,now).isEmpty(),"25% drop is below the 30% 급락 tab minimum");
   System.out.println("Pipeline: "+pass+" passed, "+fail+" failed");if(fail>0)System.exit(1);
  }
 }

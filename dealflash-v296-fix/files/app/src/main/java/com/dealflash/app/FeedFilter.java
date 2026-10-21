@@ -11,7 +11,13 @@ import java.util.function.Predicate;
 public final class FeedFilter {
     private FeedFilter() {}
     /** Minimum declared drop for an item to count as a 급락 card (independent from any alert threshold). */
-    public static final int DROP_TAB_MIN=10;
+    public static final int DROP_TAB_MIN=30;
+    /** How long a sighting stays listed per tab: 급락 = what is worth acting on now, 발견 = recent discoveries, 알림 = what the user's own threshold would have caught since yesterday. */
+    public static long windowMs(String screen){
+        if("급락".equals(screen))return 2L*60*60*1000;
+        if("발견".equals(screen))return 6L*60*60*1000;
+        return DealsRepository.FRESH_MS;
+    }
     /** A price last confirmed longer ago than this may already have ended (Fallcent drops a deal from its list when the price rises, so the server just stops refreshing it). */
     public static final long PRICE_STALE_MS=30L*60*1000;
     public static boolean isPriceStale(HistoryStore.H h,long now){return h!=null&&h.lastSeen>0&&now-h.lastSeen>PRICE_STALE_MS;}
@@ -37,7 +43,7 @@ public final class FeedFilter {
     public static List<HistoryStore.H> eligible(Collection<HistoryStore.H> history,Params p,long now){
         List<HistoryStore.H> out=new ArrayList<>();String q=p.query==null?"":p.query.toLowerCase(Locale.KOREA);
         for(HistoryStore.H h:history){
-            if(!DataQuality.visible(h)||now-h.lastSeen>DealsRepository.FRESH_MS)continue;
+            if(!DataQuality.visible(h)||now-h.lastSeen>windowMs(p.screen))continue;
             boolean isDrop=h.declaredDiscountPct>=DROP_TAB_MIN||p.hotKeys.contains(h.key);
             if("급락".equals(p.screen)&&!isDrop)continue;
             if("발견".equals(p.screen)&&!"전체".equals(p.signal)&&!hasSignal(h,p.signal))continue;

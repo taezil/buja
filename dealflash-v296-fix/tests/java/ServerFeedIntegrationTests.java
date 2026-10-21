@@ -44,7 +44,8 @@ public class ServerFeedIntegrationTests {
     check(!m.containsKey("fc:NoPrice01")&&!m.containsKey("fc:Evil0001"),"missing price / foreign domain rejected");
     // feeds
     int drop=count(c,"급락","전체",now), disc=count(c,"발견","전체",now);
-    check(drop==7,"급락 tab = all visible items with drop>=10 regardless of alert threshold (got "+drop+")");
+    int expectDrop=0;for(HistoryStore.H h:FeedFilter.cards(HistoryStore.load(c).values(),params("발견","전체"),now,null))if(h.declaredDiscountPct>=FeedFilter.DROP_TAB_MIN)expectDrop++;
+    check(drop==expectDrop&&drop>0,"급락 tab = fresh visible items with drop>="+FeedFilter.DROP_TAB_MIN+"% regardless of alert threshold (got "+drop+", expected "+expectDrop+")");
     check(disc==8,"발견 전체 = every visible item (got "+disc+")");
     check(count(c,"발견","실시간 인기",now)==4,"발견/실시간 인기 = 4 (신라면, 버즈, 생수500ml, 생수1L: option variants not merged)");
     check(count(c,"발견","카테고리 급락",now)==2,"발견/카테고리 급락 = 2");
@@ -127,7 +128,9 @@ public class ServerFeedIntegrationTests {
     FeedFilter.Params pp=params("발견","전체");
     check(FeedFilter.cards(HistoryStore.load(p).values(),pp,pnow,null).size()==5,"PRODUCTION: 발견/전체 shows 5 cards");
     int dropCards=FeedFilter.cards(HistoryStore.load(p).values(),params("급락","전체"),pnow,null).size();
-    check(dropCards==4,"PRODUCTION: 급락 shows the 4 items with drop>=10 (7% item is discovery-only) got "+dropCards);
+    check(dropCards==0,"PRODUCTION: 급락 (30%+) is empty because the captured drops are 7/13/22/25/27% (got "+dropCards+")");
+    FeedFilter.Params ap=params("알림","전체");ap.minDrop=20;
+    check(FeedFilter.cards(HistoryStore.load(p).values(),ap,pnow,null).size()==3,"PRODUCTION: 알림 tab with a 20% view threshold shows the 3 items at 22/25/27%");
     String ck0=DealsRepository.canonicalKey("fc:l:f98d93dc8536a3ec495b","FALLCENT",first.optString("product_name"));
     check(ck0.startsWith("fcfp:"),"PRODUCTION: ephemeral share-link key maps to stable fcfp: identity ("+ck0+")");
     HistoryStore.H f0=HistoryStore.load(p).get(ck0);
