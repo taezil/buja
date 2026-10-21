@@ -18,7 +18,7 @@ new='''        if(!"TEST".equals(kind)){
                     h.lastSeen=now;h.trusted=true;DealScore.observe(h,price,now);map.put(key,h);HistoryStore.save(this,map);
                 }
             }catch(Throwable ignored){}
-            ServerSync.refreshDeals(getApplicationContext(),null);
+            ServerSync.refreshDeals(this,null);
         }
         String body="TEST".equals(kind)?d.get("body"):(product==null?"상품":product)+" · "+won(price)+" · 내 알림 "+threshold+"%+";'''
 if old not in s: raise SystemExit("FCM anchor missing")
