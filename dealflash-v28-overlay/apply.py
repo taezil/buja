@@ -25,7 +25,8 @@ p.write_text(s)
 p=root/"app/build.gradle"
 s=p.read_text()
 s=s.replace("plugins {\n    id 'com.android.application'\n}", "plugins {\n    id 'com.android.application'\n    id 'com.google.gms.google-services'\n}")
-s=s.replace("versionCode 33","versionCode 35").replace("versionName '2.7.1'","versionName '2.8.0-alpha2'")
+s=re.sub(r"versionCode\\s+\\d+","versionCode 35",s)
+s=re.sub(r"versionName\\s+'[^']+'","versionName '2.8.0-alpha2'",s)
 if "firebase-messaging" not in s:
     s=s.rstrip()+"\n\ndependencies {\n    implementation platform('com.google.firebase:firebase-bom:33.5.1')\n    implementation 'com.google.firebase:firebase-messaging'\n}\n"
 p.write_text(s)
@@ -46,10 +47,34 @@ s=s.replace('/** DealFlash v2.7.1 premium price-intelligence UI. Collection, ran
 s=s.replace('private static final String[] SORTS={"추천순","할인율 높은순","절약금액 높은순","최근 발견순","긴급도 높은순","가격 낮은순"};','private static final String[] SORTS={"추천순","할인율 높은순","절약금액 높은순","최근 발견순","신호 많은순","가격 낮은순"};')
 s=s.replace('DataMigration.run(this);ServerSync.restoreDeals(this);NotificationHelper.ensureChannels(this);','DataMigration.run(this);ServerSync.restoreDeals(this);NotificationHelper.ensureChannels(this);PushManager.ensure(this);')
 s=s.replace('return "실시간 급락 · 시장가격 검증";','return "실시간 급락 · 자동 포착";')
-# Hero card method/call from v2.7: remove both if present.
+# Hero card: remove the entire method containing the literal, regardless of its method name.
 import re
-s=re.sub(r'\n\s*private void addHeroDeal\([\s\S]*?\n\s*}\n\s*\n\s*private void reload\(', '\n\n    private void reload(', s, count=1)
-s=s.replace('        addHeroDeal();\n','').replace('        addHeroDeal(name);\n','')
+def remove_method_with_literal(src,literal):
+    pos=src.find(literal)
+    if pos<0:return src
+    starts=list(re.finditer(r'(?m)^\\s*(?:private|public|protected)\\s+(?:static\\s+)?[^;\\n{]+\\([^;\\n]*\\)\\s*\\{',src[:pos+1]))
+    if not starts:return src.replace(literal,'')
+    m=starts[-1];brace=src.find('{',m.start());depth=0;end=-1
+    for i in range(brace,len(src)):
+        if src[i]=='{':depth+=1
+        elif src[i]=='}':
+            depth-=1
+            if depth==0:
+                end=i+1
+                while end<len(src) and src[end] in ' \\t\\r\\n':end+=1
+                break
+    if end<0:return src.replace(literal,'')
+    header=src[m.start():brace]
+    nm=re.search(r'([A-Za-z_$][A-Za-z0-9_$]*)\\s*\\([^()]*\\)\\s*$',header.strip())
+    name=nm.group(1) if nm else ''
+    src=src[:m.start()]+src[end:]
+    if name:
+        src=re.sub(r'(?m)^\\s*'+re.escape(name)+r'\\s*\\([^;]*\\)\\s*;\\s*$', '', src)
+    return src
+while '지금 가장 강한 딜' in s:
+    old_s=s;s=remove_method_with_literal(s,'지금 가장 강한 딜')
+    if s==old_s:break
+s=s.replace('        addHeroDeal();\\n','').replace('        addHeroDeal(name);\\n','')
 # Simplify list badges: remove urgency/confidence chips.
 s=s.replace('TextView name,price,bigHot,discount,urgent,confidence,categoryLine,signalLine,ref,saving,meta,heart,trendLabel;','TextView name,price,bigHot,discount,categoryLine,signalLine,ref,saving,meta,heart,trendLabel;')
 s=s.replace('h.badges=row();h.bigHot=badge("🔥 BIG HOT DEAL",Color.WHITE,accent);h.discount=badge("",accent,accentSoft);h.urgent=badge("",Color.WHITE,accent);h.confidence=badge("",muted,soft);h.badges.addView(h.bigHot);h.badges.addView(space(6,1));h.badges.addView(h.discount);h.badges.addView(space(6,1));h.badges.addView(h.urgent);h.badges.addView(space(6,1));h.badges.addView(h.confidence);c.addView(h.badges);',
