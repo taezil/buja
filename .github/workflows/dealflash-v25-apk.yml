@@ -105,6 +105,8 @@ jobs:
             exit 1
           fi
           sed -i 's/BuildConfig.VERSION_NAME/"2.8.0-beta1"/g' app/src/main/java/com/dealflash/app/ServerSync.java
+          sed -i 's/DealFlash v2.8 alpha/DealFlash v2.8 beta1/g' app/src/main/java/com/dealflash/app/MainActivity.java app/src/main/java/com/dealflash/app/ServerSync.java
+          sed -i 's/현재 기기 알림 확인은 복구 폴링 방식이며 FCM 즉시 푸시는 다음 연결 단계에서 켭니다./FCM 즉시 푸시를 우선 사용하고 기존 폴링은 누락 복구용으로만 동작합니다./g' app/src/main/java/com/dealflash/app/MainActivity.java
           touch gradle.properties
           grep -q '^android.useAndroidX=true$' gradle.properties || echo 'android.useAndroidX=true' >> gradle.properties
 
