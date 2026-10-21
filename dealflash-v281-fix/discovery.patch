@@ -1,0 +1,35 @@
+--- a/app/src/main/java/com/dealflash/app/MainActivity.java
++++ b/app/src/main/java/com/dealflash/app/MainActivity.java
+@@ -99,9 +99,11 @@
+             LinearLayout saved=row();saved.setPadding(0,dp(7),0,0);TextView save=pill("＋ 검색어 저장",11,ink,soft,true);save.setOnClickListener(v->{String q=search.getText().toString().trim();if(!q.isEmpty()){KeywordStore.add(this,q);Toast.makeText(this,"검색어를 저장했어요",Toast.LENGTH_SHORT).show();}});saved.addView(save);body.addView(saved);
+             search.requestFocus();search.postDelayed(()->{try{((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).showSoftInput(search,InputMethodManager.SHOW_IMPLICIT);}catch(Exception ignored){}},250);
+         }
+-        TextView signalLabel=text("DEAL SIGNALS",10,true,muted);signalLabel.setPadding(dp(2),dp(9),0,0);body.addView(signalLabel);
+-        HorizontalScrollView signalScroll=new HorizontalScrollView(this);signalScroll.setHorizontalScrollBarEnabled(false);LinearLayout signalChips=row();
+-        for(String sig:SIGNAL_FILTERS){TextView c=chip(sig,sig.equals(signalFilter));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(36));lp.setMargins(0,dp(6),dp(7),dp(5));signalChips.addView(c,lp);c.setOnClickListener(v->{signalFilter=sig;persist();showList(screen);});}signalScroll.addView(signalChips);body.addView(signalScroll);
++        if("발견".equals(name)){
++            TextView signalLabel=text("DEAL SIGNALS",10,true,muted);signalLabel.setPadding(dp(2),dp(9),0,0);body.addView(signalLabel);
++            HorizontalScrollView signalScroll=new HorizontalScrollView(this);signalScroll.setHorizontalScrollBarEnabled(false);LinearLayout signalChips=row();
++            for(String sig:SIGNAL_FILTERS){TextView c=chip(sig,sig.equals(signalFilter));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(36));lp.setMargins(0,dp(6),dp(7),dp(5));signalChips.addView(c,lp);c.setOnClickListener(v->{signalFilter=sig;persist();showList(screen);});}signalScroll.addView(signalChips);body.addView(signalScroll);
++        }
+         HorizontalScrollView scroll=new HorizontalScrollView(this);scroll.setHorizontalScrollBarEnabled(false);LinearLayout cats=row();
+         for(String nameCat:CATS){TextView c=chip(nameCat,nameCat.equals(category));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(36));lp.setMargins(0,dp(5),dp(7),dp(8));cats.addView(c,lp);c.setOnClickListener(v->{category=nameCat;persist();showList(screen);});}scroll.addView(cats);body.addView(scroll);
+         LinearLayout actions=row();TextView order=actionChip(SORTS[Math.max(0,Math.min(5,sort))]+"  ▾"),filter=actionChip("☷  필터"+((minDrop>0||minSaving>0||evidenceOnly||favoritesOnly)?" · 적용":""));
+@@ -131,7 +133,7 @@
+             if(!DataQuality.visible(x)||now-x.lastSeen>24L*60*60*1000)continue;
+             if(screen.equals("급락")&&x.declaredDiscountPct<10&&!hot.containsKey(x.key))continue;
+             if(screen.equals("보관")&&!favorite(x.key))continue;
+-            if(!"전체".equals(signalFilter)&&!hasSignal(x,signalFilter))continue;
++            if("발견".equals(screen)&&!"전체".equals(signalFilter)&&!hasSignal(x,signalFilter))continue;
+             if(!category.equals("전체")&&!category.equals(categoryOf(x)))continue;
+             if(!ProductUX.clean(x.title).toLowerCase(Locale.KOREA).contains(query.toLowerCase(Locale.KOREA)))continue;
+             DealScore.Evidence e=evaluate(x);evidence.put(x.key,e);urgency.put(x.key,DealUrgency.score(x,e,now));
+@@ -140,7 +142,8 @@
+             shown.add(x);
+         }
+         shown.sort((a,b)->{DealScore.Evidence x=evidence.get(a.key),y=evidence.get(b.key);int ux=urgency.get(a.key),uy=urgency.get(b.key),c=0;switch(sort){case 1:c=Integer.compare(b.declaredDiscountPct,a.declaredDiscountPct);break;case 2:c=Double.compare(y.count>=3?y.saving:0,x.count>=3?x.saving:0);break;case 3:c=Long.compare(b.firstSeen,a.firstSeen);break;case 4:c=Integer.compare(signalCount(b),signalCount(a));break;case 5:c=Double.compare(a.last,b.last);break;default:c=Integer.compare(uy,ux);if(c==0)c=Boolean.compare(y.errorCandidate,x.errorCandidate);if(c==0)c=Integer.compare(y.score,x.score);break;}if(c==0)c=Long.compare(b.firstSeen,a.firstSeen);return c==0?a.key.compareTo(b.key):c;});
+-        count.setText(shown.isEmpty()?emptyMessage():"현재 "+shown.size()+"개 포착"+("전체".equals(signalFilter)?"":" · "+signalFilter)+" · 알림 "+ScannerPrefs.threshold(this)+"%+");adapter.notifyDataSetChanged();list.setSelectionFromTop(pos,top);
++        String signalSuffix="발견".equals(screen)&&!"전체".equals(signalFilter)?" · "+signalFilter:"";String alertSuffix="급락".equals(screen)?" · 알림 "+ScannerPrefs.threshold(this)+"%+":"";
++        count.setText(shown.isEmpty()?emptyMessage():"현재 "+shown.size()+"개 포착"+signalSuffix+alertSuffix);adapter.notifyDataSetChanged();list.setSelectionFromTop(pos,top);
+     }
+     private String emptyMessage(){if("보관".equals(screen))return "아직 보관한 상품이 없어요";if(!query.isEmpty())return "검색 결과가 없어요 · 다른 단어로 찾아보세요";if("발견".equals(screen))return "서버의 인기·타이밍 신호를 불러오는 중이에요";return "조건에 맞는 상품이 없어요 · 다음 수집을 기다려 주세요";}
