@@ -28,6 +28,23 @@ s=p.read_text()
 s=s.replace("plugins {\n    id 'com.android.application'\n}", "plugins {\n    id 'com.android.application'\n    id 'com.google.gms.google-services'\n}")
 s=re.sub(r"versionCode\s+\d+","versionCode 35",s)
 s=re.sub(r"versionName\s+'[^']+'","versionName '2.8.0-alpha2'",s)
+if "signingConfigs {" not in s:
+    s=s.replace("    defaultConfig {", """    signingConfigs {
+        preview {
+            storeFile file('../signing/preview.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.preview
+        }
+    }
+
+    defaultConfig {""")
 if "firebase-messaging" not in s:
     s=s.rstrip()+"\n\ndependencies {\n    implementation platform('com.google.firebase:firebase-bom:33.5.1')\n    implementation 'com.google.firebase:firebase-messaging'\n}\n"
 p.write_text(s)
