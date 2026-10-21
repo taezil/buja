@@ -1,4 +1,4 @@
-name: DealFlash v2.8.5 APK
+name: DealFlash v2.9.0 APK
 
 on:
   push:
@@ -146,6 +146,15 @@ jobs:
           grep -q "refreshFromPull" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java
           grep -q "한 번 더 누르면 앱이 종료됩니다" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java
           grep -q "now-lastForegroundSync>=60_000L" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java
+
+      - name: Apply v2.9.0 notification deep-link and UX patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 dealflash-v290-fix/apply.py
+          grep -q "versionName '2.9.0'" dealflash_build_min/app/build.gradle
+          grep -q "openNotificationProduct" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java
+          grep -q "최신 상품 정보를 불러오는 중" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java
 
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
