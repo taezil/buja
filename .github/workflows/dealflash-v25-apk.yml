@@ -1,4 +1,4 @@
-name: DealFlash v2.8.2 APK
+name: DealFlash v2.8.4 APK
 
 on:
   push:
@@ -122,6 +122,21 @@ jobs:
           grep -q 'auth_token' app/src/main/java/com/dealflash/app/ServerSync.java
           grep -q "drop<localThreshold" app/src/main/java/com/dealflash/app/ServerSync.java
 
+      - name: Apply v2.8.4 discovery threshold stability patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d dealflash-v284-fix/patch.gz.b64 > /tmp/v284.patch.gz
+          gzip -dc /tmp/v284.patch.gz > /tmp/v284.patch
+          cd dealflash_build_min
+          patch -p1 --batch < /tmp/v284.patch
+          grep -q "versionName '2.8.4'" app/build.gradle
+          grep -q "reloadPending" app/src/main/java/com/dealflash/app/MainActivity.java
+          grep -q "Filter the signal BEFORE family grouping" app/src/main/java/com/dealflash/app/MainActivity.java
+          grep -q "Local user choice is authoritative" app/src/main/java/com/dealflash/app/ServerSync.java
+          grep -q "private static final int MAX = 500" app/src/main/java/com/dealflash/app/HistoryStore.java
+          grep -q "while(ps.size()>240)" app/src/main/java/com/dealflash/app/DealScore.java
+
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -134,7 +149,7 @@ jobs:
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" >/dev/null
 
-      - name: Build v2.8.2 APK
+      - name: Build v2.8.4 APK
         working-directory: dealflash_build_min
         shell: bash
         run: |
@@ -145,23 +160,23 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$APK" | tee /tmp/badging.txt
           grep -q "package: name='com.dealflash.app'" /tmp/badging.txt
-          cp "$APK" /tmp/DealFlash-v2.8.2.apk
-          sha256sum /tmp/DealFlash-v2.8.2.apk
+          cp "$APK" /tmp/DealFlash-v2.8.4.apk
+          sha256sum /tmp/DealFlash-v2.8.4.apk
 
       - name: Package exact source
         working-directory: dealflash_build_min
         shell: bash
         run: |
           set -euo pipefail
-          zip -qr /tmp/DealFlash-v2.8.2-source.zip . \
+          zip -qr /tmp/DealFlash-v2.8.4-source.zip . \
             -x 'app/build/*' '.gradle/*' 'server-v26/node_modules/*' 'server-v26/dist/*'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.8.2-apk
-          path: /tmp/DealFlash-v2.8.2.apk
+          name: DealFlash-v2.8.4-apk
+          path: /tmp/DealFlash-v2.8.4.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.8.2-source
-          path: /tmp/DealFlash-v2.8.2-source.zip
+          name: DealFlash-v2.8.4-source
+          path: /tmp/DealFlash-v2.8.4-source.zip
