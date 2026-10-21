@@ -109,6 +109,10 @@ s=s.replace('case 4:c=Integer.compare(uy,ux);break;','case 4:c=Integer.compare(s
 s=s.replace('v2.7은 서버 감시를 우선 사용합니다.', 'v2.8도 수집 범위와 내 알림 기준을 분리합니다.')
 s=s.replace('v2.7 서버는 15분 주기로', 'v2.8 서버는 5분 주기로')
 s=s.replace('현재 기기 알림 확인은 복구 폴링 방식이며 FCM 즉시 푸시는 다음 연결 단계에서 켭니다.','FCM 즉시 푸시가 우선이고, 15분 기기 폴링은 놓친 알림 복구용입니다.')
+s=s.replace('server.addView(text(ServerState.active(this)?"서버가 상품을 수집하고 이 기기는 약 15분 간격으로 새 알림만 확인합니다. 앱을 계속 띄워둘 필요가 없습니다.":"현재 백엔드의 v2.7 /api/status가 확인되지 않아 기기 보조 감시로 동작합니다.",12,false,muted));',
+'''server.addView(text(ServerState.active(this)?"서버는 5분마다 상품을 수집하고, 조건을 넘으면 FCM으로 바로 알림을 보냅니다. 15분 기기 확인은 놓친 알림 복구용입니다.":"v2.8 서버 연결을 확인하지 못해 기기 보조 감시로 동작합니다.",12,false,muted));''')
+s=s.replace('TextView test=actionChip("알림 테스트");c.addView(test);test.setOnClickListener(v->NotificationHelper.test(this));',
+'''TextView test=actionChip("FCM 푸시 테스트");c.addView(test);test.setOnClickListener(v->ServerSync.testPush(this,()->Toast.makeText(this,ServerSync.lastPushTestOk(this)?"서버에서 테스트 푸시를 보냈어요":"FCM 테스트 전송 실패",Toast.LENGTH_SHORT).show()));''')
 p.write_text(s)
 
 # ServerSync: authenticated per-device threshold + FCM event recovery.
@@ -165,6 +169,20 @@ insert='''
     }
     private static String deviceToken(Context c){return c.getSharedPreferences(PREF,0).getString("device_token","");}
     public static void markPushEventSeen(Context c,long eventId){if(eventId<=0)return;android.content.SharedPreferences p=c.getSharedPreferences(PREF,0);long old=p.getLong("event_cursor",0);if(eventId>old)p.edit().putLong("event_cursor",eventId).apply();}
+    public static void testPush(Context c,Runnable done){
+        new Thread(()->{boolean ok=false;try{
+            String auth=deviceToken(c);
+            if(auth.isEmpty()){
+                String fcm=PushManager.fcmToken(c);if(fcm.isEmpty())throw new IOException("FCM token not ready");
+                registerPushTokenBlocking(c,fcm);auth=deviceToken(c);
+            }
+            postJsonAuth("/api/v1/device/test-push",new JSONObject(),auth);ok=true;
+        }catch(Exception ignored){}finally{
+            c.getSharedPreferences(PREF,0).edit().putBoolean("last_push_test_ok",ok).apply();
+            if(done!=null){try{new android.os.Handler(android.os.Looper.getMainLooper()).post(done);}catch(Exception ignored){done.run();}}
+        }}).start();
+    }
+    public static boolean lastPushTestOk(Context c){return c.getSharedPreferences(PREF,0).getBoolean("last_push_test_ok",false);}
 '''
 marker='    public static void fetchHistory(final Activity a,String key,int days,final PriceHistoryView chart){'
 if insert.strip() not in s:s=s.replace(marker,insert+"\n"+marker)
