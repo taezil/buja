@@ -189,9 +189,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 dealflash-v296-fix/apply.py dealflash_build_min
-          grep -q "versionCode 47" dealflash_build_min/app/build.gradle
+          grep -q "versionCode 48" dealflash_build_min/app/build.gradle
           grep -q "versionName '2.9.6'" dealflash_build_min/app/build.gradle
           grep -q "class ServerIdentity" dealflash_build_min/app/src/main/java/com/dealflash/app/ServerIdentity.java
+          # Android ICU regex rejects UNICODE_CHARACTER_CLASS: static init of the class fails and surfaces as NoClassDefFoundError at runtime.
+          if grep -n "Pattern.UNICODE_CHARACTER_CLASS\|(?U)" dealflash_build_min/app/src/main/java/com/dealflash/app/*.java; then echo "Android-unsafe regex flag"; exit 1; fi
 
       - name: JVM tests (identity, migration, pipeline, production replay)
         shell: bash

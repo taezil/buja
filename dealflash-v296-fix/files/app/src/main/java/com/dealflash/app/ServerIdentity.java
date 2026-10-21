@@ -20,18 +20,24 @@ import java.util.regex.Pattern;
 public final class ServerIdentity {
     private ServerIdentity() {}
 
-    private static final int U = Pattern.UNICODE_CHARACTER_CLASS;
-    private static final Pattern WS = Pattern.compile("\\s+", U);
-    private static final Pattern PRICE_TAIL = Pattern.compile("\\s*[0-9][0-9,]{2,}\\s*원\\s*[▼↓]\\s*[0-9]{1,3}\\s*%\\s*$", U);
+    // Android's ICU Pattern does not support UNICODE_CHARACTER_CLASS (it fails class initialisation there, which surfaced as
+    // NoClassDefFoundError). Spell the JS \s / \S set out explicitly instead, so behaviour is identical on JVM and Android.
+    private static final String WSP = "\\s\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff";
+    private static final int U = 0;
+    private static Pattern rx(String re, int flags) {
+        return Pattern.compile(re.replace("\\s", "[" + WSP + "]").replace("\\S", "[^" + WSP + "]"), flags);
+    }
+    private static final Pattern WS = rx("\\s+", U);
+    private static final Pattern PRICE_TAIL = rx("\\s*[0-9][0-9,]{2,}\\s*원\\s*[▼↓]\\s*[0-9]{1,3}\\s*%\\s*$", U);
     private static final Pattern EMOJI = Pattern.compile("[🔥🚀⚡💥⭐★]+");
-    private static final Pattern PROMO = Pattern.compile("^(?:구매\\s*타이밍|지금이\\s*타이밍|역대급\\s*최저가|역대급|최저가\\s*타이밍|타이밍|오늘의\\s*특가|초특가|특가|핫딜|추천상품|득템|놓치면\\s*후회|구매)(?=\\s|$)\\s*", U);
-    private static final Pattern BADGE = Pattern.compile("(?:\\[)?(?:판매자\\s*로켓|로켓\\s*배송|로켓배송|로켓프레시|로켓직구)(?:\\])?(?=\\s|$)", U);
-    private static final Pattern SPEC_JOIN = Pattern.compile("([0-9]+(?:\\.[0-9]+)?\\s*(?:ml|kg|g|l))\\s*[, ]+\\s*([0-9]+개)", U | Pattern.CASE_INSENSITIVE);
-    private static final Pattern UNIT_GLUE = Pattern.compile("([0-9])\\s+(ml|l|g|kg|tb|gb|cm|mm|인치|개|매|팩|봉|병|캔|세트|입)(?=$|[^a-z])", U);
+    private static final Pattern PROMO = rx("^(?:구매\\s*타이밍|지금이\\s*타이밍|역대급\\s*최저가|역대급|최저가\\s*타이밍|타이밍|오늘의\\s*특가|초특가|특가|핫딜|추천상품|득템|놓치면\\s*후회|구매)(?=\\s|$)\\s*", U);
+    private static final Pattern BADGE = rx("(?:\\[)?(?:판매자\\s*로켓|로켓\\s*배송|로켓배송|로켓프레시|로켓직구)(?:\\])?(?=\\s|$)", U);
+    private static final Pattern SPEC_JOIN = rx("([0-9]+(?:\\.[0-9]+)?\\s*(?:ml|kg|g|l))\\s*[, ]+\\s*([0-9]+개)", U | Pattern.CASE_INSENSITIVE);
+    private static final Pattern UNIT_GLUE = rx("([0-9])\\s+(ml|l|g|kg|tb|gb|cm|mm|인치|개|매|팩|봉|병|캔|세트|입)(?=$|[^a-z])", U);
     private static final Pattern NON_WORD = Pattern.compile("[^가-힣a-z0-9]+");
-    private static final Pattern TAIL_REPEAT = Pattern.compile("(\\S+(?:\\s+\\S+){0,3}?)\\s+\\1$", U);
-    private static final Pattern SEG_SPLIT = Pattern.compile("\\s*,\\s+", U);
-    private static final Pattern X_TIMES_Q = Pattern.compile("^(.+?)\\s*[×x]\\s*(\\d+(?:\\.\\d+)?\\s*(?:개입|개|세트|팩|봉|병|캔|매|입|ea|p))$", U | Pattern.CASE_INSENSITIVE);
+    private static final Pattern TAIL_REPEAT = rx("(\\S+(?:\\s+\\S+){0,3}?)\\s+\\1$", U);
+    private static final Pattern SEG_SPLIT = rx("\\s*,\\s+", U);
+    private static final Pattern X_TIMES_Q = rx("^(.+?)\\s*[×x]\\s*(\\d+(?:\\.\\d+)?\\s*(?:개입|개|세트|팩|봉|병|캔|매|입|ea|p))$", U | Pattern.CASE_INSENSITIVE);
 
     private static String trim(String s) { return WS.matcher(s).replaceAll(" ").trim(); }
     private static String nfkc(String s) { return Normalizer.normalize(s, Normalizer.Form.NFKC); }
