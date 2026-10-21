@@ -34,6 +34,14 @@ q=q.replace('int drop=o.optInt("drop_rate",o.optInt("drop_pct",0));','int drop=o
 q=q.replace('JSONArray sig=o.optJSONArray("signals");', 'JSONArray sig=o.optJSONArray("signals"); if(sig==null){String rawSig=o.optString("signals","");if(!rawSig.isEmpty()){sig=new JSONArray();for(String part:rawSig.split("\\\\|")){String v=part.trim();if(!v.isEmpty())sig.put(v);}}}')
 p.write_text(q)
 
+# Do not require multi-observation evidence just to render server/FCM-authoritative products.
+p=Path("dealflash_build_min/app/src/main/java/com/dealflash/app/DataQuality.java")
+q=p.read_text()
+# Keep URL/title/price sanity checks, but trusted server observations must be visible immediately.
+q=q.replace('return valid(h.key,h.source,h.url,h.title,h.last,h.declaredDiscountPct)&&h.observations>=2;', 'return valid(h.key,h.source,h.url,h.title,h.last,h.declaredDiscountPct)&&(h.trusted||h.observations>=1);')
+q=q.replace('return valid(h.key,h.source,h.url,h.title,h.last,h.declaredDiscountPct) && h.observations>=2;', 'return valid(h.key,h.source,h.url,h.title,h.last,h.declaredDiscountPct) && (h.trusted||h.observations>=1);')
+p.write_text(q)
+
 p=Path("dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java")
 s=p.read_text()
 old='ServerSync.refreshDeals(this,()->{manualRefreshInFlight=false;reload();Toast.makeText(this,"최신 상품으로 새로고침했어요",Toast.LENGTH_SHORT).show();});'
@@ -45,5 +53,5 @@ s=s.replace('if("발견".equals(screen))return "서버의 인기·타이밍 신�
 p.write_text(s)
 
 g=Path("dealflash_build_min/app/build.gradle")
-t=g.read_text().replace("versionCode 42","versionCode 44").replace("versionName '2.9.1'","versionName '2.9.3'")
+t=g.read_text().replace("versionCode 42","versionCode 45").replace("versionName '2.9.1'","versionName '2.9.4'")
 g.write_text(t)
