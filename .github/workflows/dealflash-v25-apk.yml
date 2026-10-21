@@ -216,6 +216,8 @@ jobs:
           grep -q "package: name='com.dealflash.app'" /tmp/badging.txt
           cp "$APK" /tmp/DealFlash-v2.9.5.apk
           sha256sum /tmp/DealFlash-v2.9.5.apk
+          echo "::notice title=APK SHA-256::$(sha256sum /tmp/DealFlash-v2.9.5.apk | cut -d' ' -f1)"
+          echo "::notice title=APK version::$(grep -o "versionCode='[0-9]*' versionName='[^']*'" /tmp/badging.txt | head -1)"
 
       - name: Package exact source
         working-directory: dealflash_build_min
