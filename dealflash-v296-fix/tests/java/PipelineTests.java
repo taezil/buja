@@ -85,6 +85,23 @@ public class PipelineTests {
   wp.screen="급락";int e1=FeedFilter.eligible(Arrays.asList(w1),wp,now).size();wp.screen="발견";int e2=FeedFilter.eligible(Arrays.asList(w1),wp,now).size();wp.screen="알림";int e3=FeedFilter.eligible(Arrays.asList(w1),wp,now).size();
   check(e1==0&&e2==1&&e3==1,"3h-old sighting: not in 급락 (2h), still in 발견 (6h) and 알림 (24h)");
   w1.declaredDiscountPct=25;w1.lastSeen=now-60_000L;wp.screen="급락";check(FeedFilter.eligible(Arrays.asList(w1),wp,now).isEmpty(),"25% drop is below the 30% 급락 tab minimum");
+  long dayMs=86_400_000L;
+  check(PriceJudge.judge(10000,10000,15000,6,now-3*dayMs,now,50).level==PriceJudge.LOWEST,"price at the recorded minimum is the lowest price on record");
+  check(PriceJudge.judge(12000,9000,15000,6,now-3*dayMs,now,40).level==PriceJudge.CHEAP&&PriceJudge.judge(12000,9000,15000,6,now-3*dayMs,now,40).vsAvgPct==20,"20% below the record average is cheap");
+  check(PriceJudge.judge(14500,9000,15000,6,now-3*dayMs,now,5).level==PriceJudge.NORMAL,"within 10% of the average is a normal price");
+  check(PriceJudge.judge(14500,9000,15000,6,now-3*dayMs,now,60).level==PriceJudge.INFLATED,"a big declared discount at an ordinary price is flagged as inflated");
+  check(PriceJudge.judge(18000,9000,15000,6,now-3*dayMs,now,10).level==PriceJudge.PRICEY,"above the record average is pricey");
+  check(PriceJudge.judge(10000,10000,15000,2,now-3*dayMs,now,50).level==PriceJudge.COLLECTING&&PriceJudge.judge(10000,10000,15000,6,now-3600_000L,now,50).level==PriceJudge.COLLECTING&&PriceJudge.judge(10000,0,0,0,0,now,50).level==PriceJudge.COLLECTING&&PriceJudge.judge(0,1,1,9,1,now,5).level==PriceJudge.NONE,"too few rows or too short a span is never judged (collecting); no price is no verdict");
+  check(ServerDealsParser.parse(new org.json.JSONObject("{\"product_key\":\"fcfp:aaaaaaaaaaaaaaaaaaaa\",\"product_name\":\"히스토리 상품 500ml\",\"product_url\":\"https://fcnt.link/x\",\"current_price\":9000,\"last_drop_rate\":40,\"last_seen\":"+now+",\"source\":\"FALLCENT\",\"hist_min\":8000,\"hist_avg\":12000,\"hist_n\":5,\"hist_first\":"+(now-dayMs)+"}"),now,new ServerDealsParser.Counters()).histAvg==12000,"parser reads the server's hist_* fields");
+  {android.content.Context rc=new android.content.Context();HistoryStore.H rh=new HistoryStore.H();rh.key="fcfp:roundtrip00000000";rh.title="저장 왕복 상품";rh.source="FALLCENT";rh.url="https://fcnt.link/rt";rh.imageUrl="";rh.last=9000;rh.lastSeen=now;rh.firstSeen=now;rh.trusted=true;rh.histMin=8000;rh.histAvg=12000;rh.histN=5;rh.histFirst=now-dayMs;
+   Map<String,HistoryStore.H> rm=new HashMap<>();rm.put(rh.key,rh);HistoryStore.save(rc,rm);HistoryStore.H back=HistoryStore.load(rc).get(rh.key);
+   check(back!=null&&back.histMin==8000&&back.histAvg==12000&&back.histN==5&&back.histFirst==now-dayMs&&back.copy().histAvg==12000,"price-history stats survive save/load and copy");}
+  {HistoryStore.H sr=new HistoryStore.H();sr.key="fcfp:search000000000001";sr.source="FALLCENT";sr.title="검색용 특수상품 알파 300g";sr.last=5000;sr.declaredDiscountPct=12;sr.trusted=true;sr.lastSeen=now-10*3600_000L;sr.firstSeen=sr.lastSeen;sr.url="https://fallcent.com/product/s1";
+   FeedFilter.Params sp=new FeedFilter.Params();sp.categoryOf=hh->"전체";sp.screen="급락";
+   check(FeedFilter.eligible(Arrays.asList(sr),sp,now).isEmpty(),"a 12%/10h-old item is not browsable in 급락");
+   sp.query="특수상품";check(FeedFilter.eligible(Arrays.asList(sr),sp,now).size()==1,"searching on 급락 finds it (24h, any discount)");
+   sp.screen="발견";sp.signal="실시간 인기";check(FeedFilter.eligible(Arrays.asList(sr),sp,now).size()==1,"searching on 발견 ignores the signal chip and the 6h window");
+   sp.query="없는단어";check(FeedFilter.eligible(Arrays.asList(sr),sp,now).isEmpty(),"search still requires a title match");}
   System.out.println("Pipeline: "+pass+" passed, "+fail+" failed");if(fail>0)System.exit(1);
  }
 }

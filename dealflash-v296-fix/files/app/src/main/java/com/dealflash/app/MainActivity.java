@@ -86,7 +86,6 @@ public class MainActivity extends Activity {
         addNav("⚡","급락",()->{favoritesOnly=false;showList("급락");});
         addNav("✨","발견",()->{favoritesOnly=false;showList("발견");});
         addNav("🔔","알림",()->{favoritesOnly=false;showList("알림");});
-        addNav("⌕","검색",()->{favoritesOnly=false;showList("검색");});
         addNav("♡","보관",()->{favoritesOnly=false;showList("보관");});
         addNav("⚙","설정",this::settings);
     }
@@ -101,9 +100,10 @@ public class MainActivity extends Activity {
     private void showList(String name){
         reset(name);
         boolean searchMode="검색".equals(name);
-        if(!searchMode&&!"보관".equals(name))query="";   // the search box only exists on 검색/보관, so a stale query must not keep filtering other tabs
-        if(searchMode||"보관".equals(name)){
-            EditText search=new EditText(this);search.setSingleLine();search.setTextColor(ink);search.setHintTextColor(muted);search.setTextSize(14);search.setHint("⌕  상품명 또는 모델명 검색");search.setPadding(dp(15),0,dp(15),0);search.setBackground(stroked(card,16,border,1));search.setText(query);body.addView(search,new LinearLayout.LayoutParams(-1,dp(48)));
+        boolean searchBox=searchMode||"급락".equals(name)||"발견".equals(name)||"보관".equals(name);
+        if(!searchBox)query="";   // the search box only exists on 급락/발견/보관, so a stale query must not keep filtering other tabs
+        if(searchBox){
+            EditText search=new EditText(this);search.setSingleLine();search.setTextColor(ink);search.setHintTextColor(muted);search.setTextSize(14);search.setHint("⌕  상품명 또는 모델명 검색"+("급락".equals(name)||"발견".equals(name)?" (최근 24시간 전체)":""));search.setPadding(dp(15),0,dp(15),0);search.setBackground(stroked(card,16,border,1));search.setText(query);body.addView(search,new LinearLayout.LayoutParams(-1,dp(48)));
             search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int n){query=s.toString();reload();}public void afterTextChanged(Editable e){}});
             if(searchMode){
                 LinearLayout saved=row();saved.setPadding(0,dp(2),0,0);TextView save=pill("＋ 검색어 저장",12,ink,soft,true);save.setMinHeight(dp(48));save.setOnClickListener(v->{String q=search.getText().toString().trim();if(!q.isEmpty()){KeywordStore.add(this,q);Toast.makeText(this,"검색어를 저장했어요",Toast.LENGTH_SHORT).show();}});saved.addView(save,new LinearLayout.LayoutParams(-2,dp(48)));body.addView(saved);
@@ -217,7 +217,11 @@ public class MainActivity extends Activity {
             h.discount.setText("▼ "+x.declaredDiscountPct+"%");
             h.categoryLine.setText(categoryOf(x)+(x.rocket?" · 로켓":""));
             h.name.setText(ProductUX.display(x.title));h.price.setText(money(x.last));
-            if(e.count>=3&&e.reference>x.last){h.ref.setText("기준 "+money(e.reference)+" · "+money(e.saving)+" 절약");h.ref.setPaintFlags(h.ref.getPaintFlags()&~Paint.STRIKE_THRU_TEXT_FLAG);}else{h.ref.setText("가격 이력 수집 중");h.ref.setPaintFlags(h.ref.getPaintFlags()&~Paint.STRIKE_THRU_TEXT_FLAG);}
+            PriceJudge.Verdict pj=PriceJudge.judge(x.last,x.histMin,x.histAvg,x.histN,x.histFirst,System.currentTimeMillis(),x.declaredDiscountPct);
+            h.ref.setPaintFlags(h.ref.getPaintFlags()&~Paint.STRIKE_THRU_TEXT_FLAG);
+            if(pj.level>=PriceJudge.LOWEST){h.ref.setText(pj.shortLabel);h.ref.setTextColor(judgeColor(pj.level));}
+            else if(e.count>=3&&e.reference>x.last){h.ref.setText("기준 "+money(e.reference)+" · "+money(e.saving)+" 절약");h.ref.setTextColor(muted);}
+            else{h.ref.setText(pj.level==PriceJudge.COLLECTING?pj.shortLabel:"가격 이력 수집 중");h.ref.setTextColor(muted);}
             String sig=signalText(x);long age=System.currentTimeMillis()-x.lastSeen;
             boolean ended=PriceCheck.endedByCheck(MainActivity.this,x);boolean stale=ended||FeedFilter.isPriceStale(x,System.currentTimeMillis());
             h.meta.setText((sig.isEmpty()?"":sig+" · ")+ago(x.lastSeen)+" 확인"+(ended?" · 쿠팡에서 가격 올라감":stale?" · 가격 변동 가능":""));h.meta.setTextColor(stale?amber:muted);h.price.setTextColor(stale?muted:accent);
@@ -236,9 +240,11 @@ public class MainActivity extends Activity {
         new AlertDialog.Builder(this).setTitle("빠르게 골라보기").setView(form).setNeutralButton("초기화",(d,w)->{minDrop=0;minSaving=0;evidenceOnly=false;favoritesOnly=false;persist();showList(screen);}).setNegativeButton("취소",null).setPositiveButton("적용",(d,w)->{minDrop=Math.min(99,number(drop));minSaving=number(saving);evidenceOnly=confirmed.isChecked();favoritesOnly=fav.isChecked();persist();showList(screen);}).show();
     }
 
+    private String autoCheckKey=null;
     private void openNotificationProduct(Intent intent){
         final String key=intent.getStringExtra("hotKey");
         if(key==null||key.isEmpty())return;
+        autoCheckKey=key;   // tapping a push re-checks the live Coupang price automatically
         Map<String,HistoryStore.H> map=HistoryStore.load(this);
         HistoryStore.H ready=map.get(key);
         if(DataQuality.visible(ready)){detail(key);return;}
@@ -275,9 +281,9 @@ public class MainActivity extends Activity {
         TextView quickBuy=primaryButton("⚡ 바로 가격 확인");LinearLayout.LayoutParams qbp=new LinearLayout.LayoutParams(-1,dp(58));qbp.setMargins(0,dp(12),0,dp(3));c.addView(quickBuy,qbp);quickBuy.setOnClickListener(v->AppLauncher.openProduct(this,x.source,x.url));
         c.addView(text("발견 "+ago(x.firstSeen)+" · 마지막 확인 "+ago(x.lastSeen),11,false,muted));
         if(FeedFilter.isPriceStale(x,System.currentTimeMillis())){TextView sw=text("마지막 확인이 "+ago(x.lastSeen)+"이에요. 쿠팡에서 가격이 이미 올랐을 수 있으니 '바로 가격 확인'으로 현재 가격을 먼저 확인해 주세요.",12,false,amber);sw.setPadding(0,dp(4),0,dp(2));c.addView(sw);}
-        if(x.declaredDiscountPct>=60||PriceCheck.stored(this,x.key)!=null)addPriceCheck(c,x);
+        if(x.declaredDiscountPct>=60||PriceCheck.stored(this,x.key)!=null||x.key.equals(autoCheckKey))addPriceCheck(c,x);
 
-        LinearLayout judge=panel();judge.addView(text("딜 요약",13,true,muted));String summary=(signalCount(x)>1?"폴센트 신호 "+signalCount(x)+"개 동시포착":"폴센트 급락 신호 포착")+" · "+ago(x.lastSeen)+" 확인";judge.addView(text(summary,18,true,ink));judge.addView(text("표시 할인율과 현재 가격을 먼저 보여주고, 과거 가격은 아래에서 참고용으로 확인할 수 있어요.",13,false,muted));c.addView(judge);
+        LinearLayout judge=panel();judge.addView(text("딜 요약",13,true,muted));String summary=(signalCount(x)>1?"폴센트 신호 "+signalCount(x)+"개 동시포착":"폴센트 급락 신호 포착")+" · "+ago(x.lastSeen)+" 확인";judge.addView(text(summary,18,true,ink));judge.addView(text("표시 할인율과 현재 가격을 먼저 보여주고, 과거 가격은 아래에서 참고용으로 확인할 수 있어요.",13,false,muted));c.addView(judge);addJudgePanel(c,x);
 
         long now=System.currentTimeMillis();
         LinearLayout proof=panel();proof.addView(text("가격 이력 · 참고",18,true,ink));proof.addView(text("최근 7일 비교 관측 "+e.count+"회\n관측 평균가  "+money(e.average)+"\n관측 중앙값  "+money(e.reference)+"\n이전 관측 최저가  "+money(e.low)+"\n관측 중앙값 대비 하락  "+Math.round(e.drop)+"%\n관측 기준 절약  "+(e.count>=3?money(e.saving):"데이터 부족"),14,false,muted));
@@ -377,11 +383,21 @@ public class MainActivity extends Activity {
         String[] v0=PriceCheck.stored(this,x.key);long now=System.currentTimeMillis();
         if(v0!=null)renderCheck(res,v0[0],Double.parseDouble(v0[1]),Long.parseLong(v0[2]),v0[3]);
         boolean recent=v0!=null&&now-Long.parseLong(v0[2])<10*60_000L;
-        if(!recent&&x.declaredDiscountPct>=60&&FeedFilter.isPriceStale(x,now))start.run();
+        boolean fromPush=x.key.equals(autoCheckKey);if(fromPush)autoCheckKey=null;
+        if(!recent&&(fromPush||(x.declaredDiscountPct>=60&&FeedFilter.isPriceStale(x,now))))start.run();
+    }
+    private int judgeColor(int level){return level==PriceJudge.LOWEST||level==PriceJudge.CHEAP?green:level==PriceJudge.PRICEY||level==PriceJudge.INFLATED?amber:muted;}
+    /** "가격 판정": is it really cheap, judged against the server's 30-day price record. */
+    private void addJudgePanel(LinearLayout c,HistoryStore.H x){
+        PriceJudge.Verdict pj=PriceJudge.judge(x.last,x.histMin,x.histAvg,x.histN,x.histFirst,System.currentTimeMillis(),x.declaredDiscountPct);
+        if(pj.level==PriceJudge.NONE)return;
+        LinearLayout p=panel();p.addView(text("가격 판정",13,true,muted));
+        p.addView(text(pj.label,18,true,pj.level>=PriceJudge.LOWEST?judgeColor(pj.level):ink));
+        p.addView(text(pj.detail,13,false,muted));c.addView(p);
     }
     private void renderCheck(TextView res,String status,double price,long at,String note){
         String when=ago(at);int col=muted;String t;
-        if(PriceVerdict.SAME.equals(status)){t="쿠팡 확인 · 현재 "+money(price)+" · 아직 유효해요";col=green;}
+        if(PriceVerdict.SAME.equals(status)){t="쿠팡 확인됨 ✓ · 현재 "+money(price)+" · 아직 유효해요";col=green;}
         else if(PriceVerdict.UP.equals(status)){t="쿠팡 확인 · 현재 "+money(price)+" · 가격이 올라서 급락이 끝났어요";col=amber;}
         else if(PriceVerdict.DOWN.equals(status)){t="쿠팡 확인 · 현재 "+money(price)+" · 더 내려갔어요";col=green;}
         else{t="쿠팡 확인 불가"+(note==null||note.isEmpty()?"":" · "+note)+" · '바로 가격 확인'으로 직접 확인해 주세요";}

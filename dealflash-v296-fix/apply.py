@@ -4,6 +4,8 @@ import hashlib, pathlib, shutil, sys
 root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "dealflash_build_min")
 here = pathlib.Path(__file__).parent / "files"
 BASE = {
+  "app/src/main/java/com/dealflash/app/ServerDealsParser.java": "9811927ae72060a92383816a8f75eb5cf7e36dda40c8a58c45b1d34680db89ff",
+  "app/src/main/java/com/dealflash/app/HistoryStore.java": "25d27e0e2bf4896bcc1f971c2086302cf5df156ed53ea04d6a23cbd36a37f69a",
   "app/src/main/java/com/dealflash/app/FeedFilter.java": "720fa23b9cf93b53dcc1b8134820535900df7890b8054833e2ac98da0ce5b127",
   "app/src/main/java/com/dealflash/app/MainActivity.java": "9e9a039cb659d7f197a80d8f82cb57802260080e17254252560fcfc475206e39",
   "app/src/main/java/com/dealflash/app/DealsRepository.java": "792f811f1b55ef29896c286bda077061f7ec2a0b03d138e529176b04dcba59c5",
@@ -21,7 +23,8 @@ NEW = [
   "app/src/main/java/com/dealflash/app/ServerIdentity.java",
   "app/src/main/java/com/dealflash/app/ImageSampling.java",
   "app/src/main/java/com/dealflash/app/PriceCheck.java",
-  "app/src/main/java/com/dealflash/app/PriceVerdict.java"
+  "app/src/main/java/com/dealflash/app/PriceVerdict.java",
+  "app/src/main/java/com/dealflash/app/PriceJudge.java"
 ]
 sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
 bad = [f"{rel}: base sha {sha(root/rel)[:12]} != expected {want[:12]}" for rel, want in BASE.items() if not (root/rel).exists() or sha(root/rel) != want]
@@ -34,5 +37,5 @@ for rel in list(BASE) + NEW:
     shutil.copyfile(here/rel, root/rel)
 g = root/"app/build.gradle"; t = g.read_text()
 if "versionCode 46" not in t or "versionName '2.9.5'" not in t: raise SystemExit("unexpected version in build.gradle")
-g.write_text(t.replace("versionCode 46", "versionCode 51").replace("versionName '2.9.5'", "versionName '2.9.9'"))
+g.write_text(t.replace("versionCode 46", "versionCode 52").replace("versionName '2.9.5'", "versionName '2.10.0'"))
 print("v2.9.6 overlay applied:", len(BASE) - 1, "files replaced,", len(NEW), "added")

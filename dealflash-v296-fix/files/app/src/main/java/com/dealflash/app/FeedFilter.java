@@ -42,14 +42,16 @@ public final class FeedFilter {
     /** Stage 1: per-record eligibility (before family grouping). */
     public static List<HistoryStore.H> eligible(Collection<HistoryStore.H> history,Params p,long now){
         List<HistoryStore.H> out=new ArrayList<>();String q=p.query==null?"":p.query.toLowerCase(Locale.KOREA);
+        // A search looks through everything seen in the last 24h on any tab: the 급락/발견 limits are for browsing, not for finding a named product.
+        final boolean searching=!q.isEmpty();final long window=searching?DealsRepository.FRESH_MS:windowMs(p.screen);
         for(HistoryStore.H h:history){
-            if(!DataQuality.visible(h)||now-h.lastSeen>windowMs(p.screen))continue;
+            if(!DataQuality.visible(h)||now-h.lastSeen>window)continue;
             boolean isDrop=h.declaredDiscountPct>=DROP_TAB_MIN||p.hotKeys.contains(h.key);
-            if("급락".equals(p.screen)&&!isDrop)continue;
-            if("발견".equals(p.screen)&&!"전체".equals(p.signal)&&!hasSignal(h,p.signal))continue;
+            if("급락".equals(p.screen)&&!isDrop&&!searching)continue;
+            if("발견".equals(p.screen)&&!searching&&!"전체".equals(p.signal)&&!hasSignal(h,p.signal))continue;
             if("보관".equals(p.screen)&&!p.favorite.test(h.key))continue;
             if(!"전체".equals(p.category)&&!p.category.equals(p.categoryOf.apply(h)))continue;
-            if(!q.isEmpty()&&!ProductUX.clean(h.title).toLowerCase(Locale.KOREA).contains(q))continue;
+            if(searching&&!ProductUX.clean(h.title).toLowerCase(Locale.KOREA).contains(q))continue;
             out.add(h);
         }
         out.sort((a,b)->Long.compare(b.lastSeen,a.lastSeen));

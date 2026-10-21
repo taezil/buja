@@ -68,6 +68,7 @@ public final class DealsRepository {
                     z.title=it.title;z.url=it.url;z.source=it.source;z.last=it.price;z.declaredDiscountPct=it.pct;
                     if(it.image!=null&&!it.image.isEmpty())z.imageUrl=it.image;
                     z.lastSeen=Math.max(z.lastSeen,it.lastSeen);z.serverSeen=it.lastSeen;z.rocket=it.rocket;z.trusted=it.trusted;z.origin="server";
+                    if(it.histN>0){z.histMin=it.histMin;z.histAvg=it.histAvg;z.histN=it.histN;z.histFirst=it.histFirst;}
                     if(oldLast>0&&oldLast!=it.price){z.prevPrice=oldLast;z.prevSeen=oldSeen;}
                     DealScore.observe(z,it.price,it.lastSeen);
                 }else if((z.imageUrl==null||z.imageUrl.isEmpty())&&it.image!=null)z.imageUrl=it.image;
