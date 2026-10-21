@@ -127,11 +127,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 dealflash-v28-overlay/apply.py
-          grep -q "versionName '2.8.0-alpha2'" dealflash_build_min/app/build.gradle
-          grep -q "class DealFlashMessagingService" dealflash_build_min/app/src/main/java/com/dealflash/app/DealFlashMessagingService.java
-          grep -q "PushManager.ensure" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java
-          ! grep -q "지금 가장 강한 딜" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java
-          grep -q "com.dealflash.app" dealflash_build_min/app/google-services.json
+          grep -q "versionName '2.8.0-alpha2'" dealflash_build_min/app/build.gradle || { echo "VERSION_CHECK_FAILED"; grep -n "versionCode\\|versionName" dealflash_build_min/app/build.gradle; exit 1; }
+          grep -q "class DealFlashMessagingService" dealflash_build_min/app/src/main/java/com/dealflash/app/DealFlashMessagingService.java || { echo "FCM_SERVICE_CHECK_FAILED"; exit 1; }
+          grep -q "PushManager.ensure" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java || { echo "PUSH_MANAGER_CHECK_FAILED"; grep -n "PushManager" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java || true; exit 1; }
+          if grep -q "지금 가장 강한 딜" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java; then echo "HERO_STILL_PRESENT"; grep -n -C 12 "지금 가장 강한 딜" dealflash_build_min/app/src/main/java/com/dealflash/app/MainActivity.java; exit 1; fi
+          grep -q "com.dealflash.app" dealflash_build_min/app/google-services.json || { echo "FIREBASE_CONFIG_CHECK_FAILED"; exit 1; }
 
       - name: Run Java identity and pipeline tests
         working-directory: dealflash_build_min
