@@ -103,9 +103,11 @@ jobs:
           gzip -dc /tmp/v281.patch.gz > /tmp/v281.patch
           cd dealflash_build_min
           patch -p1 --batch < /tmp/v281.patch
+          patch -p1 --batch < ../dealflash-v281-fix/discovery.patch
           grep -q "versionName '2.8.1'" app/build.gradle
           grep -q "syncDiscovery" app/src/main/java/com/dealflash/app/ServerSync.java
           grep -q "bootstrap=after==0" app/src/main/java/com/dealflash/app/ServerSync.java
+          grep -q 'if("발견".equals(name))' app/src/main/java/com/dealflash/app/MainActivity.java
           ! grep -q "h.spark" app/src/main/java/com/dealflash/app/MainActivity.java
 
       - name: Setup Gradle 8.9
