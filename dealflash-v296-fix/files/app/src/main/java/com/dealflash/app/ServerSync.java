@@ -125,14 +125,14 @@ public final class ServerSync {
 
     /**
      * v2.10.2: asks the server which locally held products have ended (exact lookup, batches of {@link EndedSync#BATCH}) and hides them.
-     * Never fails the deal sync: an old server (404) or a network error just leaves everything visible as before.
+     * Device-authenticated. Never fails the deal sync: an old server (404), an unregistered device (401) or a network error just leaves everything visible as before.
      */
     static void syncEnded(Context app,java.util.Set<String> confirmedLive){
         try{
             ArrayList<EndedSync.Ended> all=new ArrayList<>();
             for(List<String> batch:EndedSync.batches(HistoryStore.load(app),confirmedLive)){
                 JSONObject body=new JSONObject();body.put("keys",new JSONArray(batch));
-                all.addAll(EndedSync.parse(postJson("/api/v1/ended/check",body)));
+                all.addAll(EndedSync.parse(authPostJson(app,"/api/v1/ended/check",body)));
             }
             final android.content.SharedPreferences fav=app.getSharedPreferences("favorites",0);
             int n=EndedSync.apply(app,all,k->fav.getBoolean(k,false),System.currentTimeMillis());
