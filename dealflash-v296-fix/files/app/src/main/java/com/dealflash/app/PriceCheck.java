@@ -65,12 +65,22 @@ public final class PriceCheck {
                     if (target == null) note = "상품 링크 검증 실패";
                 }
                 if (target != null && !target.startsWith("http")) { target = null; note = "쿠팡 앱 링크만 반환됨"; }
+                final String hop = target == null ? "" : hostPath(target);
                 if (target != null) {
                     browser = new BrowserScanner(app);
                     BrowserScanner.DetailResult d = browser.scanDetail(target, "COUPANG", x.last, 0, 25_000L);
-                    if (d.blocked) note = "쿠팡 접근 제한/캡차";
-                    else if (d.timeout) note = "쿠팡 로딩 시간초과";
-                    else if (!d.ok || d.current <= 0) note = d.error.isEmpty() ? "쿠팡 페이지에서 가격을 읽지 못함" : d.error;
+                    if (d.debug != null && !d.debug.isEmpty() && !hop.isEmpty()) d.debug = hop + " → " + d.debug;
+                    String trace = d.debug == null || d.debug.isEmpty() ? "" : " [" + d.debug + "]";
+                    if (d.blocked) note = "쿠팡 접근 제한/캡차" + trace;
+                    else if (d.timeout) note = "쿠팡 로딩 시간초과" + trace;
+                    else if (!d.ok || d.current <= 0) {
+                        // Several prices on the page (coupon / member / list ...): if one equals what the feed showed, the deal is confirmed;
+                        // otherwise show them so the user can judge. Never declare "price went up" from an ambiguous page.
+                        double hit = PriceVerdict.matchAmong(x.last, d.currentCandidates);
+                        if (hit > 0) { price = hit; status = PriceVerdict.SAME; note = "페이지 가격 후보 " + PriceVerdict.listPrices(d.currentCandidates) + " 중 일치"; }
+                        else if (!d.currentCandidates.isEmpty()) note = "가격 후보 " + PriceVerdict.listPrices(d.currentCandidates) + " · 앱 가격과 일치하는 값 없음" + trace;
+                        else note = (d.error.isEmpty() ? "쿠팡 페이지에서 가격을 읽지 못함" : d.error) + trace;
+                    }
                     else { price = d.current; status = PriceVerdict.classify(x.last, d.current); }
                 }
             } catch (Throwable t) {
@@ -82,6 +92,10 @@ public final class PriceCheck {
             save(app, x.key, fs, fp, fn);
             a.runOnUiThread(() -> { if (!a.isFinishing()) cb.done(fs, fp, fn); });
         }, "price-check").start();
+    }
+
+    private static String hostPath(String u) {
+        try { android.net.Uri p = android.net.Uri.parse(u); String path = p.getPath() == null ? "" : p.getPath(); return (p.getHost() == null ? "" : p.getHost()) + (path.length() > 14 ? path.substring(0, 14) : path); } catch (Throwable t) { return ""; }
     }
 
     /** Off-screen Fallcent page -> captured Coupang address. Mirrors AppLauncher.openFallcentClean but returns the URL instead of launching it. */

@@ -4,6 +4,7 @@ import hashlib, pathlib, shutil, sys
 root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "dealflash_build_min")
 here = pathlib.Path(__file__).parent / "files"
 BASE = {
+  "app/src/main/java/com/dealflash/app/BrowserScanner.java": "e728b028fda15cab1743fb6c7038e816ca2bc5e5b6af65f31ab692af52ac0759",
   "app/src/main/java/com/dealflash/app/ServerDealsParser.java": "9811927ae72060a92383816a8f75eb5cf7e36dda40c8a58c45b1d34680db89ff",
   "app/src/main/java/com/dealflash/app/HistoryStore.java": "25d27e0e2bf4896bcc1f971c2086302cf5df156ed53ea04d6a23cbd36a37f69a",
   "app/src/main/java/com/dealflash/app/FeedFilter.java": "720fa23b9cf93b53dcc1b8134820535900df7890b8054833e2ac98da0ce5b127",
@@ -37,5 +38,5 @@ for rel in list(BASE) + NEW:
     shutil.copyfile(here/rel, root/rel)
 g = root/"app/build.gradle"; t = g.read_text()
 if "versionCode 46" not in t or "versionName '2.9.5'" not in t: raise SystemExit("unexpected version in build.gradle")
-g.write_text(t.replace("versionCode 46", "versionCode 52").replace("versionName '2.9.5'", "versionName '2.10.0'"))
+g.write_text(t.replace("versionCode 46", "versionCode 53").replace("versionName '2.9.5'", "versionName '2.10.1'"))
 print("v2.9.6 overlay applied:", len(BASE) - 1, "files replaced,", len(NEW), "added")

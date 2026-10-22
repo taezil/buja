@@ -102,6 +102,8 @@ public class PipelineTests {
    sp.query="특수상품";check(FeedFilter.eligible(Arrays.asList(sr),sp,now).size()==1,"searching on 급락 finds it (24h, any discount)");
    sp.screen="발견";sp.signal="실시간 인기";check(FeedFilter.eligible(Arrays.asList(sr),sp,now).size()==1,"searching on 발견 ignores the signal chip and the 6h window");
    sp.query="없는단어";check(FeedFilter.eligible(Arrays.asList(sr),sp,now).isEmpty(),"search still requires a title match");}
+  check(PriceVerdict.matchAmong(5100,Arrays.asList(10200.0,5150.0,12900.0))==5150.0&&PriceVerdict.matchAmong(5100,Arrays.asList(10200.0,12900.0))==0&&PriceVerdict.matchAmong(5100,null)==0,"a page price within tolerance of the feed price confirms the deal; none within tolerance never does");
+  check(PriceVerdict.listPrices(Arrays.asList(5100.0,10200.0)).equals("5,100원 / 10,200원")&&PriceVerdict.listPrices(Arrays.asList(1000.0,2000.0,3000.0,4000.0,5000.0)).endsWith("외"),"candidate prices are listed readably and capped");
   System.out.println("Pipeline: "+pass+" passed, "+fail+" failed");if(fail>0)System.exit(1);
  }
 }

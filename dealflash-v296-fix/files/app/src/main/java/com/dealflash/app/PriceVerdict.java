@@ -13,6 +13,20 @@ public final class PriceVerdict {
         return found > expected ? UP : DOWN;
     }
 
+    /** The candidate within tolerance of the expected price (closest), or 0 when none is. */
+    public static double matchAmong(double expected, java.util.List<Double> candidates) {
+        double best = 0, bestD = Double.MAX_VALUE;
+        if (candidates == null || !(expected > 0)) return 0;
+        for (double c : candidates) { if (SAME.equals(classify(expected, c))) { double d = Math.abs(c - expected); if (d < bestD) { bestD = d; best = c; } } }
+        return best;
+    }
+
+    public static String listPrices(java.util.List<Double> candidates) {
+        StringBuilder b = new StringBuilder(); int n = 0;
+        for (double c : candidates) { if (n++ >= 4) { b.append(" 외"); break; } if (b.length() > 0) b.append(" / "); b.append(String.format(java.util.Locale.KOREA, "%,d", Math.round(c))).append("원"); }
+        return b.toString();
+    }
+
     public static String encode(String status, double price, long at, String note) {
         return status + "|" + Math.round(price) + "|" + at + "|" + (note == null ? "" : note.replace('|', '/'));
     }
