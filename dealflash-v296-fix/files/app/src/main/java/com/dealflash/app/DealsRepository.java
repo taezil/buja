@@ -18,7 +18,7 @@ public final class DealsRepository {
     public static final long FRESH_MS=24L*60*60*1000;
     private DealsRepository(){}
 
-    public static final class Result { public int server,parsed,distinct,saved,rejected,persisted,visible; public String error=""; }
+    public static final class Result { public int server,parsed,distinct,saved,rejected,persisted,visible; public String error=""; public Set<String> activeKeys=new HashSet<>(); }
 
     /** Server key -> key the store uses. Identity for every stable server key; ephemeral keys fold onto the server's title key. Idempotent. */
     public static String canonicalKey(String key,String source,String title){
@@ -62,6 +62,7 @@ public final class DealsRepository {
                 distinct.add(it.key);
                 HistoryStore.H z=map.get(it.key);
                 if(z==null){z=new HistoryStore.H();z.key=it.key;z.firstSeen=it.firstSeen;}
+                z.endedAt=0;   // the server only lists live deals: a product that came back is live again
                 z.signals=mergeSignals(z.signals,it.signals);
                 if(it.lastSeen>=z.serverSeen||z.last<=0){
                     double oldLast=z.last;long oldSeen=z.lastSeen;
@@ -84,7 +85,7 @@ public final class DealsRepository {
             Map<String,HistoryStore.H> back=HistoryStore.load(c);
             res.persisted=back.size();
             for(HistoryStore.H h:back.values())if(DataQuality.visible(h)&&now-h.lastSeen<=FRESH_MS)res.visible++;
-            res.server=k.serverItems;res.parsed=k.parsed;res.rejected=k.invalid;res.distinct=distinct.size();
+            res.server=k.serverItems;res.parsed=k.parsed;res.rejected=k.invalid;res.distinct=distinct.size();res.activeKeys=distinct;
             String saveErr=sr.failed>0?sr.failed+" serialize failures, first="+sr.firstError:"";
             SyncDiag.record(c,endpoint,k,res.saved,res.visible,res.persisted,saveErr,sample);
         }
@@ -116,7 +117,7 @@ public final class DealsRepository {
             if(h.last>0&&h.last!=price){h.prevPrice=h.last;h.prevSeen=h.lastSeen;}
             h.title=title;h.url=DataQuality.acceptUrl(url);h.source=source;h.last=price;h.declaredDiscountPct=drop;
             if(imageUrl!=null&&!imageUrl.isEmpty())h.imageUrl=imageUrl;if(h.imageUrl==null)h.imageUrl="";
-            h.lastSeen=now;h.trusted=true;h.origin="fcm";DealScore.observe(h,price,now);
+            h.lastSeen=now;h.endedAt=0;h.trusted=true;h.origin="fcm";DealScore.observe(h,price,now);
             map.put(ck,h);HistoryStore.save(c,map);
         }
         HotDealStore.put(c,ck,title,url,source,price,0,drop,imageUrl);

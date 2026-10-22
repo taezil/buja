@@ -29,12 +29,14 @@ public class HistoryStore {
         public String lastAlertSig = "";
         /** Server-side 30-day price-history stats (see PriceJudge). */
         public double histMin, histAvg; public int histN; public long histFirst;
+        /** Server says the deal left Fallcent for good (0 = live). Such rows are hidden from every tab except 보관 and pruned after a day. */
+        public long endedAt;
         public H copy(){
             H n=new H();n.key=key;n.title=title;n.url=url;n.source=source;n.imageUrl=imageUrl;n.rocket=rocket;
             n.declaredDiscountPct=declaredDiscountPct;n.prevDiscountPct=prevDiscountPct;n.dealScore=dealScore;
             n.observations=observations;n.sources=sources;n.linkedCoupangKey=linkedCoupangKey;n.signals=signals;
             n.origin=origin;n.trusted=trusted;n.prevPrice=prevPrice;n.prevSeen=prevSeen;n.reference=reference;
-            n.last=last;n.low=low;n.firstSeen=firstSeen;n.lastSeen=lastSeen;n.serverSeen=serverSeen;n.lastAlertSig=lastAlertSig;n.histMin=histMin;n.histAvg=histAvg;n.histN=histN;n.histFirst=histFirst;
+            n.last=last;n.low=low;n.firstSeen=firstSeen;n.lastSeen=lastSeen;n.serverSeen=serverSeen;n.lastAlertSig=lastAlertSig;n.histMin=histMin;n.histAvg=histAvg;n.histN=histN;n.histFirst=histFirst;n.endedAt=endedAt;
             return n;
         }
     }
@@ -62,7 +64,7 @@ public class HistoryStore {
                 h.histMin=o.optDouble("histMin",0);h.histAvg=o.optDouble("histAvg",0);h.histN=o.optInt("histN",0);h.histFirst=o.optLong("histFirst",0);
                 h.reference=o.optDouble("reference",0); h.last=o.optDouble("last",0); h.low=o.optDouble("low",0);
                 h.firstSeen=o.optLong("firstSeen",0); h.lastSeen=o.optLong("lastSeen",0); h.lastAlertSig=o.optString("lastAlertSig","");
-                h.origin=o.optString("origin","local"); h.serverSeen=o.optLong("serverSeen",0);
+                h.origin=o.optString("origin","local"); h.serverSeen=o.optLong("serverSeen",0); h.endedAt=o.optLong("endedAt",0);
                 if (!h.key.isEmpty()) map.put(h.key,h);
             }
         } catch(Exception e){ android.util.Log.e("DealFlashStore","load failed: "+e); }
@@ -89,7 +91,7 @@ public class HistoryStore {
                 o.put("declaredDiscountPct",h.declaredDiscountPct);o.put("prevDiscountPct",h.prevDiscountPct);o.put("dealScore",h.dealScore);
                 o.put("prevPrice",fin(h.prevPrice));o.put("prevSeen",h.prevSeen);o.put("reference",fin(h.reference));o.put("last",fin(h.last));o.put("low",fin(h.low));
                 o.put("firstSeen",h.firstSeen);o.put("lastSeen",h.lastSeen);o.put("lastAlertSig",h.lastAlertSig==null?"":h.lastAlertSig);
-                o.put("origin",h.origin==null?"local":h.origin);o.put("serverSeen",h.serverSeen);
+                o.put("origin",h.origin==null?"local":h.origin);o.put("serverSeen",h.serverSeen);o.put("endedAt",h.endedAt);
                 o.put("histMin",fin(h.histMin));o.put("histAvg",fin(h.histAvg));o.put("histN",h.histN);o.put("histFirst",h.histFirst);
                 a.put(o); r.written++;
             } catch(Exception e){ r.failed++; if(r.firstError.isEmpty())r.firstError=h.key+": "+e; android.util.Log.e("DealFlashStore","serialize failed "+h.key+": "+e); }

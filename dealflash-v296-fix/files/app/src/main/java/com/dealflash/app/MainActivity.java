@@ -223,8 +223,8 @@ public class MainActivity extends Activity {
             else if(e.count>=3&&e.reference>x.last){h.ref.setText("기준 "+money(e.reference)+" · "+money(e.saving)+" 절약");h.ref.setTextColor(muted);}
             else{h.ref.setText(pj.level==PriceJudge.COLLECTING?pj.shortLabel:"가격 이력 수집 중");h.ref.setTextColor(muted);}
             String sig=signalText(x);long age=System.currentTimeMillis()-x.lastSeen;
-            boolean ended=PriceCheck.endedByCheck(MainActivity.this,x);boolean stale=ended||FeedFilter.isPriceStale(x,System.currentTimeMillis());
-            h.meta.setText((sig.isEmpty()?"":sig+" · ")+ago(x.lastSeen)+" 확인"+(ended?" · 쿠팡에서 가격 올라감":stale?" · 가격 변동 가능":""));h.meta.setTextColor(stale?amber:muted);h.price.setTextColor(stale?muted:accent);
+            boolean ended=PriceCheck.endedByCheck(MainActivity.this,x);boolean stale=ended||x.endedAt>0||FeedFilter.isPriceStale(x,System.currentTimeMillis());
+            h.meta.setText((sig.isEmpty()?"":sig+" · ")+ago(x.lastSeen)+" 확인"+(x.endedAt>0?" · 폴센트 특가 종료":ended?" · 쿠팡에서 가격 올라감":stale?" · 가격 변동 가능":""));h.meta.setTextColor(stale?amber:muted);h.price.setTextColor(stale?muted:accent);
             h.heart.setText(favorite(x.key)?"♥":"♡");h.heart.setTextColor(favorite(x.key)?accent:muted);h.heart.setContentDescription("보관");
             h.heart.setOnClickListener(v->{boolean next=!favorite(x.key);getSharedPreferences("favorites",0).edit().putBoolean(x.key,next).apply();h.heart.setText(next?"♥":"♡");h.heart.setTextColor(next?accent:muted);if("보관".equals(screen))reload();});
             h.image.setContentDescription(ProductUX.display(x.title));ProductImages.loadThumb(MainActivity.this,h.image,x.imageUrl,x.key,dp(92));return recycled;
@@ -280,6 +280,7 @@ public class MainActivity extends Activity {
         DealScore.Evidence e=evaluate(x);int u=DealUrgency.score(x,e,System.currentTimeMillis());LinearLayout badges=row();badges.addView(badge("▼ "+x.declaredDiscountPct+"%",accent,accentSoft));c.addView(badges);
         TextView quickBuy=primaryButton("⚡ 바로 가격 확인");LinearLayout.LayoutParams qbp=new LinearLayout.LayoutParams(-1,dp(58));qbp.setMargins(0,dp(12),0,dp(3));c.addView(quickBuy,qbp);quickBuy.setOnClickListener(v->AppLauncher.openProduct(this,x.source,x.url));
         c.addView(text("발견 "+ago(x.firstSeen)+" · 마지막 확인 "+ago(x.lastSeen),11,false,muted));
+        if(x.endedAt>0){TextView gone=text("폴센트 목록에서 내려간 특가예요. 지금은 이 가격이 아닐 가능성이 커요.",12,false,amber);gone.setPadding(0,dp(4),0,dp(2));c.addView(gone);}
         if(FeedFilter.isPriceStale(x,System.currentTimeMillis())){TextView sw=text("마지막 확인이 "+ago(x.lastSeen)+"이에요. 쿠팡에서 가격이 이미 올랐을 수 있으니 '바로 가격 확인'으로 현재 가격을 먼저 확인해 주세요.",12,false,amber);sw.setPadding(0,dp(4),0,dp(2));c.addView(sw);}
         if(x.declaredDiscountPct>=60||PriceCheck.stored(this,x.key)!=null||x.key.equals(autoCheckKey))addPriceCheck(c,x);
 

@@ -46,6 +46,7 @@ public final class FeedFilter {
         final boolean searching=!q.isEmpty();final long window=searching?DealsRepository.FRESH_MS:windowMs(p.screen);
         for(HistoryStore.H h:history){
             if(!DataQuality.visible(h)||now-h.lastSeen>window)continue;
+            if(h.endedAt>0&&!"보관".equals(p.screen))continue;   // the deal left Fallcent: gone from every tab (browsing, search, 알림), still reachable in 보관
             boolean isDrop=h.declaredDiscountPct>=DROP_TAB_MIN||p.hotKeys.contains(h.key);
             if("급락".equals(p.screen)&&!isDrop&&!searching)continue;
             if("발견".equals(p.screen)&&!searching&&!"전체".equals(p.signal)&&!hasSignal(h,p.signal))continue;

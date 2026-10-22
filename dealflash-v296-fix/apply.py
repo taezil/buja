@@ -10,6 +10,7 @@ BASE = {
   "app/src/main/java/com/dealflash/app/FeedFilter.java": "720fa23b9cf93b53dcc1b8134820535900df7890b8054833e2ac98da0ce5b127",
   "app/src/main/java/com/dealflash/app/MainActivity.java": "9e9a039cb659d7f197a80d8f82cb57802260080e17254252560fcfc475206e39",
   "app/src/main/java/com/dealflash/app/DealsRepository.java": "792f811f1b55ef29896c286bda077061f7ec2a0b03d138e529176b04dcba59c5",
+  "app/src/main/java/com/dealflash/app/ServerSync.java": "4a8fd60a21bbf1cdf98c33ebfce12f7339aa5507e3954197085a74ae61e65f0a",
   "app/src/main/java/com/dealflash/app/DealFlashMessagingService.java": "277c572907b2c7db8f5b8cc787682a0da9d22484c228ad3efc7bbf8e55934d0a",
   "app/src/main/java/com/dealflash/app/DataMigration.java": "4c6f33a3d5a1547f6d5aef5bd146ccaa25b3594c1cfc4b374426d87270b31276",
   "app/src/main/java/com/dealflash/app/ProductUX.java": "a78590f914d890f525bf1b81878de057ddb4eca34342e7f8c91d366f9fb5af35",
@@ -23,6 +24,7 @@ BASE = {
 NEW = [
   "app/src/main/java/com/dealflash/app/ServerIdentity.java",
   "app/src/main/java/com/dealflash/app/ImageSampling.java",
+  "app/src/main/java/com/dealflash/app/EndedSync.java",
   "app/src/main/java/com/dealflash/app/PriceCheck.java",
   "app/src/main/java/com/dealflash/app/PriceVerdict.java",
   "app/src/main/java/com/dealflash/app/PriceJudge.java"
@@ -38,5 +40,5 @@ for rel in list(BASE) + NEW:
     shutil.copyfile(here/rel, root/rel)
 g = root/"app/build.gradle"; t = g.read_text()
 if "versionCode 46" not in t or "versionName '2.9.5'" not in t: raise SystemExit("unexpected version in build.gradle")
-g.write_text(t.replace("versionCode 46", "versionCode 53").replace("versionName '2.9.5'", "versionName '2.10.1'"))
+g.write_text(t.replace("versionCode 46", "versionCode 54").replace("versionName '2.9.5'", "versionName '2.10.2'"))
 print("v2.9.6 overlay applied:", len(BASE) - 1, "files replaced,", len(NEW), "added")
