@@ -95,7 +95,7 @@ if(isInstalled(c,COUPANG)){try{Intent i=new Intent(Intent.ACTION_VIEW,Uri.parse(
         boolean follow(String z){
           if(done[0]||z==null||z.isEmpty())return false;
           String q=norm(z);
-          if(coup(q)){done[0]=true;launch(q);h.post(()->cleanup());return true;}
+          if(coup(q)){done[0]=true;FcntGuard.remember(a,input,q,System.currentTimeMillis());launch(q);h.post(()->cleanup());return true;}
           return false;
         }
         android.webkit.WebViewClient client(){
@@ -118,6 +118,9 @@ if(isInstalled(c,COUPANG)){try{Intent i=new Intent(Intent.ACTION_VIEW,Uri.parse(
         }
         String js(boolean click){
           return "(function(doClick){try{"
+           +"var tt=(document.title||''),bb=((document.body&&document.body.innerText)||'').slice(0,400);"
+           +"if(/access denied|just a moment|attention required/i.test(tt)||/error 1015|you are being rate limited|verifying you are human/i.test(bb))return 'BLOCKED '+tt;"
+           +"if(location.hostname.indexOf('fallcent.com')<0)return 'OFFSITE';"
            +"var all=[].slice.call(document.querySelectorAll('a,button,[role=button],div,span,p'));"
            +"var c=all.filter(function(e){var t=(e.innerText||e.textContent||'').replace(/\\s+/g,' ').trim();return t.indexOf('쿠팡 바로가기')===0&&t.length<30;});"
            +"if(!c.length)return 'NOTFOUND';"
@@ -136,18 +139,29 @@ if(isInstalled(c,COUPANG)){try{Intent i=new Intent(Intent.ACTION_VIEW,Uri.parse(
           if(done[0])return;
           if(tries[0]++>=36){fail();return;}
           final long now=System.currentTimeMillis();
-          final boolean click=clicks[0]<4&&now-lastClick[0]>1500;
+          final boolean click=clicks[0]<2&&now-lastClick[0]>6000;   // one click per page load: repeated clicks re-hit fcnt.link and got this phone rate limited (Cloudflare 1015)
           w.evaluateJavascript(js(click),raw->{
             if(done[0])return;
             String r=raw==null?"":raw;
             try{Object o=new org.json.JSONTokener(r).nextValue();r=o==null?"":o.toString();}catch(Exception ignore){}
-            if(!r.equals("NOTFOUND"))log("JS "+r);
+            if(!r.equals("NOTFOUND")&&!r.equals("OFFSITE"))log("JS "+r);
+            if(r.startsWith("BLOCKED")){blocked(r);return;}
             if(r.startsWith("HREF:")){
               String u=r.substring(5);
               follow(u); // 쿠팡 주소면 바로 쿠팡으로. 그 외 링크(fcnt.link 등)는 직접 열지 않고 클릭 흐름으로만 처리
             }else if(r.startsWith("CLICKED")){clicks[0]++;lastClick[0]=System.currentTimeMillis();}
             if(!done[0])h.postDelayed(()->poll(w),500);
           });
+        }
+        /** Cloudflare blocked fcnt.link for this phone: stop at once (more requests only prolong it) and remember for a cooldown. */
+        void blocked(String r){
+          if(done[0])return;done[0]=true;FcntGuard.markBlocked(a,System.currentTimeMillis());log("BLOCKED "+r);cleanup();
+          showBlocked();
+        }
+        void showBlocked(){
+          String tail=trace.length()>900?trace.substring(trace.length()-900):trace.toString();
+          new android.app.AlertDialog.Builder(a).setTitle("폴센트가 잠시 접속을 제한했어요").setMessage(FcntGuard.blockedMessage(a,System.currentTimeMillis())+"\n\n급하면 '폴센트에서 열기'로 직접 들어가 주세요.\n\n"+tail)
+            .setPositiveButton("확인",null).setNeutralButton("폴센트에서 열기",(d,wh)->web(a,input)).show();
         }
         /** On timeout: ask the page what it is (URL, title, first text - e.g. a Cloudflare "Just a moment..." check) before tearing it down, then show the trace with that line FIRST. */
         void fail(){
@@ -171,6 +185,10 @@ if(isInstalled(c,COUPANG)){try{Intent i=new Intent(Intent.ACTION_VIEW,Uri.parse(
       }
 
       final R r=new R();
+      final long t0=System.currentTimeMillis();
+      final String cached=FcntGuard.recall(a,input,t0);
+      if(cached!=null){r.log("CACHED "+cached);r.launch(cached);return;}   // resolved before: straight to Coupang, no Fallcent request at all
+      if(FcntGuard.blocked(a,t0)){r.showBlocked();return;}
       final android.webkit.WebView main=r.make(true);
       main.loadUrl(input);
       h.postDelayed(()->r.poll(main),800);

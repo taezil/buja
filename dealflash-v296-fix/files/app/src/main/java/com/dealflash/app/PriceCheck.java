@@ -54,12 +54,17 @@ public final class PriceCheck {
             try {
                 String target;
                 if ("FALLCENT".equals(x.source) || (x.url != null && x.url.contains("fallcent.com"))) {
-                    Resolver r = new Resolver(a, x.url);
-                    r.start();
-                    boolean ok = r.await(40_000L);
-                    r.abort();
-                    target = ok ? r.result : null;
-                    if (target == null) note = r.reason.isEmpty() ? "쿠팡 주소를 얻지 못함" : r.reason;
+                    String cachedUrl = FcntGuard.recall(app, x.url, System.currentTimeMillis());
+                    if (cachedUrl != null) { target = cachedUrl; }                       // resolved before: no Fallcent request
+                    else if (FcntGuard.blocked(app, System.currentTimeMillis())) { target = null; note = FcntGuard.blockedMessage(app, System.currentTimeMillis()); }
+                    else {
+                        Resolver r = new Resolver(a, x.url);
+                        r.start();
+                        boolean ok = r.await(40_000L);
+                        r.abort();
+                        target = ok ? r.result : null;
+                        if (target == null) note = r.reason.isEmpty() ? "쿠팡 주소를 얻지 못함" : r.reason;
+                    }
                 } else {
                     target = ProductUrl.canonical(x.source, x.url);
                     if (target == null) note = "상품 링크 검증 실패";
@@ -182,7 +187,7 @@ public final class PriceCheck {
         boolean follow(String z) {
             if (done || z == null || z.isEmpty()) return false;
             String q = norm(z);
-            if (coup(q)) { result = q; finish(); return true; }
+            if (coup(q)) { result = q; FcntGuard.remember(a, input, q, System.currentTimeMillis()); finish(); return true; }
             return false;
         }
         WebViewClient client() {
@@ -201,6 +206,9 @@ public final class PriceCheck {
         }
         String js(boolean click) {
             return "(function(doClick){try{"
+                + "var tt=(document.title||''),bb=((document.body&&document.body.innerText)||'').slice(0,400);"
+                + "if(/access denied|just a moment|attention required/i.test(tt)||/error 1015|you are being rate limited|verifying you are human/i.test(bb))return 'BLOCKED '+tt;"
+                + "if(location.hostname.indexOf('fallcent.com')<0)return 'OFFSITE';"
                 + "var all=[].slice.call(document.querySelectorAll('a,button,[role=button],div,span,p'));"
                 + "var c=all.filter(function(e){var t=(e.innerText||e.textContent||'').replace(/\\s+/g,' ').trim();return t.indexOf('쿠팡 바로가기')===0&&t.length<30;});"
                 + "if(!c.length)return 'NOTFOUND';"
@@ -219,11 +227,12 @@ public final class PriceCheck {
             if (done) return;
             if (tries++ >= 36) { if (reason.isEmpty()) reason = "'쿠팡 바로가기' 버튼을 찾지 못함"; finish(); return; }
             final long now = System.currentTimeMillis();
-            final boolean click = clicks < 4 && now - lastClick > 1500;
+            final boolean click = clicks < 2 && now - lastClick > 6000;
             w.evaluateJavascript(js(click), raw -> {
                 if (done) return;
                 String r = raw == null ? "" : raw;
                 try { Object o = new org.json.JSONTokener(r).nextValue(); r = o == null ? "" : o.toString(); } catch (Exception ignore) {}
+                if (r.startsWith("BLOCKED")) { FcntGuard.markBlocked(a, System.currentTimeMillis()); reason = "폴센트(fcnt.link) 접속 제한(Cloudflare 1015) · 약 10분 후 다시 시도"; finish(); return; }
                 if (r.startsWith("HREF:")) follow(r.substring(5));
                 else if (r.startsWith("CLICKED")) { clicks++; lastClick = System.currentTimeMillis(); }
                 if (!done) h.postDelayed(() -> poll(w), 500);

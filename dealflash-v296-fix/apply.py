@@ -26,6 +26,7 @@ NEW = [
   "app/src/main/java/com/dealflash/app/ServerIdentity.java",
   "app/src/main/java/com/dealflash/app/ImageSampling.java",
   "app/src/main/java/com/dealflash/app/EndedSync.java",
+  "app/src/main/java/com/dealflash/app/FcntGuard.java",
   "app/src/main/java/com/dealflash/app/PriceCheck.java",
   "app/src/main/java/com/dealflash/app/PriceVerdict.java",
   "app/src/main/java/com/dealflash/app/PriceJudge.java"
@@ -41,5 +42,5 @@ for rel in list(BASE) + NEW:
     shutil.copyfile(here/rel, root/rel)
 g = root/"app/build.gradle"; t = g.read_text()
 if "versionCode 46" not in t or "versionName '2.9.5'" not in t: raise SystemExit("unexpected version in build.gradle")
-g.write_text(t.replace("versionCode 46", "versionCode 56").replace("versionName '2.9.5'", "versionName '2.10.4'"))
+g.write_text(t.replace("versionCode 46", "versionCode 57").replace("versionName '2.9.5'", "versionName '2.10.5'"))
 print("v2.9.6 overlay applied:", len(BASE) - 1, "files replaced,", len(NEW), "added")
