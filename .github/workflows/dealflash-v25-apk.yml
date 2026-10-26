@@ -1,4 +1,4 @@
-name: DealFlash v2.10.6 APK
+name: DealFlash v2.10.7 APK
 
 on:
   push:
@@ -184,13 +184,13 @@ jobs:
           grep -q "class DealsRepository" dealflash_build_min/app/src/main/java/com/dealflash/app/DealsRepository.java
           grep -q "checkServer" dealflash_build_min/app/src/main/java/com/dealflash/app/DataQuality.java
 
-      - name: Apply v2.10.6 stabilization (identity, dedupe, UI, images)
+      - name: Apply v2.10.7 stabilization (identity, dedupe, UI, images)
         shell: bash
         run: |
           set -euo pipefail
           python3 dealflash-v296-fix/apply.py dealflash_build_min
-          grep -q "versionCode 58" dealflash_build_min/app/build.gradle
-          grep -q "versionName '2.10.6'" dealflash_build_min/app/build.gradle
+          grep -q "versionCode 59" dealflash_build_min/app/build.gradle
+          grep -q "versionName '2.10.7'" dealflash_build_min/app/build.gradle
           grep -q "class ServerIdentity" dealflash_build_min/app/src/main/java/com/dealflash/app/ServerIdentity.java
           # Android ICU regex rejects UNICODE_CHARACTER_CLASS: static init of the class fails and surfaces as NoClassDefFoundError at runtime.
           if grep -n "Pattern.UNICODE_CHARACTER_CLASS\|(?U)" dealflash_build_min/app/src/main/java/com/dealflash/app/*.java; then echo "Android-unsafe regex flag"; exit 1; fi
@@ -218,7 +218,7 @@ jobs:
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" >/dev/null
 
-      - name: Build v2.10.6 APK
+      - name: Build v2.10.7 APK
         working-directory: dealflash_build_min
         shell: bash
         run: |
@@ -229,9 +229,9 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$APK" | tee /tmp/badging.txt
           grep -q "package: name='com.dealflash.app'" /tmp/badging.txt
-          cp "$APK" /tmp/DealFlash-v2.10.6.apk
-          sha256sum /tmp/DealFlash-v2.10.6.apk
-          echo "::notice title=APK SHA-256::$(sha256sum /tmp/DealFlash-v2.10.6.apk | cut -d' ' -f1)"
+          cp "$APK" /tmp/DealFlash-v2.10.7.apk
+          sha256sum /tmp/DealFlash-v2.10.7.apk
+          echo "::notice title=APK SHA-256::$(sha256sum /tmp/DealFlash-v2.10.7.apk | cut -d' ' -f1)"
           echo "::notice title=APK version::$(grep -o "versionCode='[0-9]*' versionName='[^']*'" /tmp/badging.txt | head -1)"
 
       - name: Package exact source
@@ -239,15 +239,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          zip -qr /tmp/DealFlash-v2.10.6-source.zip . \
+          zip -qr /tmp/DealFlash-v2.10.7-source.zip . \
             -x 'app/build/*' '.gradle/*' 'server-v26/node_modules/*' 'server-v26/dist/*'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.10.6-apk
-          path: /tmp/DealFlash-v2.10.6.apk
+          name: DealFlash-v2.10.7-apk
+          path: /tmp/DealFlash-v2.10.7.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DealFlash-v2.10.6-source
-          path: /tmp/DealFlash-v2.10.6-source.zip
+          name: DealFlash-v2.10.7-source
+          path: /tmp/DealFlash-v2.10.7-source.zip

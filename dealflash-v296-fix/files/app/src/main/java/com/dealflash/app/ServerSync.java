@@ -162,6 +162,23 @@ public final class ServerSync {
     }
     public static void fetchHistory(final Activity a,String key,final PriceHistoryView chart){fetchHistory(a,key,180,chart);}
 
+    /** Price this product had just before its current one, from the server's observed history (oldest first). 0 = none / unchanged. */
+    public static double previousPrice(JSONArray ar){
+        if(ar==null||ar.length()<2)return 0;
+        double last=0;int li=-1;
+        for(int i=ar.length()-1;i>=0;i--){JSONObject o=ar.optJSONObject(i);if(o==null)continue;double v=o.optDouble("total_price",o.optDouble("price",0));if(v>0){last=v;li=i;break;}}
+        if(li<0)return 0;
+        for(int i=li-1;i>=0;i--){JSONObject o=ar.optJSONObject(i);if(o==null)continue;double v=o.optDouble("total_price",o.optDouble("price",0));if(v>0&&Math.round(v)!=Math.round(last))return v;}
+        return 0;
+    }
+    public static void fetchPreviousPrice(final Activity a,String key,final java.util.function.DoubleConsumer cb){
+        new Thread(()->{try{
+            JSONObject root=getJson("/api/history/"+URLEncoder.encode(key,"UTF-8")+"?days=30",8000,8000);
+            final double prev=previousPrice(root.optJSONArray("history"));
+            if(prev>0)a.runOnUiThread(()->cb.accept(prev));
+        }catch(Exception ignored){}}).start();
+    }
+
     public static void fetchMarketOffers(final Activity a,String key,boolean refresh,final MarketCallback cb){
         new Thread(()->{
             ArrayList<MarketComparison.Offer> out=new ArrayList<>();
