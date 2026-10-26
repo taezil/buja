@@ -42,5 +42,5 @@ for rel in list(BASE) + NEW:
     shutil.copyfile(here/rel, root/rel)
 g = root/"app/build.gradle"; t = g.read_text()
 if "versionCode 46" not in t or "versionName '2.9.5'" not in t: raise SystemExit("unexpected version in build.gradle")
-g.write_text(t.replace("versionCode 46", "versionCode 57").replace("versionName '2.9.5'", "versionName '2.10.5'"))
+g.write_text(t.replace("versionCode 46", "versionCode 58").replace("versionName '2.9.5'", "versionName '2.10.6'"))
 print("v2.9.6 overlay applied:", len(BASE) - 1, "files replaced,", len(NEW), "added")
